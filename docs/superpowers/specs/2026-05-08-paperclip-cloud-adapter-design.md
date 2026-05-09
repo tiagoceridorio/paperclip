@@ -919,7 +919,7 @@ Every code is documented with an inline UI remediation hint.
 1. **Workspace strategy refactor scope.** Lifting workspace-strategy code out of `server/` into a shared library is a real refactor. The implementation plan must scope it precisely to avoid creep.
 2. **PVC zonal pinning UX.** First-zone-binds-forever is correct but surprising. Cluster-connection setup must explicitly call this out, with regional StorageClass guidance front-and-center.
 3. **`executionTarget` plumbing audit.** This spec assumes every existing adapter (`claude_local`, `codex_local`, etc.) plumbs `executionTarget` correctly through to its execute path. The implementation plan must include an audit and any plumbing fixes.
-4. **Resource defaults for `claude_local` in a Pod.** Long sessions can spike memory significantly. Need empirical numbers (50 representative agents in `kind`, capture p99 memory) before locking LimitRange defaults. Defaults in this spec are a starting point.
+4. **Resource defaults for `claude_local` in a Pod.** Long sessions can spike memory significantly. Need empirical numbers (50 representative agents in `kind`, capture p99 memory) before locking LimitRange defaults. Defaults in this spec are a starting point. **RESOLVED in M3a (sizing.md scaffold + measurement test in place; operator runs the test out-of-band)**
 5. **Cross-cluster TokenReview.** The V1.5 second-factor on `/api/agent-auth/exchange` needs identity federation between clusters. Documented as V2.
 6. **`registerExecutionTargetDriver()` doesn't exist yet.** The platform-module registry surface is extended in this spec; the implementation plan should add the registry as a small explicit step before plugging in the k8s driver.
 7. **Adapter `networkRequirements` field doesn't exist on `ServerAdapterModule` yet.** Adding `networkRequirements?: { allowFqdns?: string[] }` to the adapter contract is a small addition the implementation plan must include.
@@ -943,5 +943,11 @@ Every code is documented with an inline UI remediation hint.
 | Retry semantics | Owned by Paperclip (`backoffLimit: 0`) | Owned by k8s (`backoffLimit: 6`); shared | Paperclip already has `AdapterExecutionErrorFamily` + `retryNotBefore`; double-retry breaks billing/audit |
 
 ---
+
+## M3a status (as of 2026-05-09)
+
+Risk #4 (empirical resource defaults) is RESOLVED — `docs/k8s-execution/sizing.md` and `packages/adapters/kubernetes-execution/test/integration/empirical-measurement-claude.test.ts` together provide the measurement infrastructure; defaults retain M1's values pending operator measurement runs.
+
+M3a addendum at `docs/superpowers/specs/2026-05-09-paperclip-cloud-adapter-m3a-addendum.md` covers the four §1-§4 items: real claude-code test, real issueGitCredentials, empirical sizing, per-tenant Cilium DSL.
 
 *Spec ends.*
