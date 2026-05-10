@@ -1,0 +1,142 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="_tokens.css" />
+  <style>
+    body { background: var(--bg); padding: 32px; }
+    .stage {
+      width: 320px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 12px;
+      position: relative;
+    }
+    .section-label {
+      padding: 0 8px;
+      margin-bottom: 6px;
+    }
+    .space-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: var(--accent);
+      cursor: pointer;
+      position: relative;
+    }
+    .space-row .name {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .menu-btn {
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      display: inline-grid; place-items: center;
+      color: var(--fg);
+    }
+    .menu {
+      position: absolute;
+      top: 36px;
+      right: 8px;
+      min-width: 220px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 12px 32px rgb(0 0 0 / 0.55);
+      padding: 4px;
+      z-index: 10;
+    }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--fg);
+      cursor: pointer;
+    }
+    .menu-item:hover { background: var(--accent); }
+    .menu-item .shortcut {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .menu-divider { height: 1px; background: var(--border); margin: 4px 0; }
+    .menu-item.danger { color: var(--destructive); }
+    .menu-item.disabled {
+      color: var(--muted-soft);
+      cursor: not-allowed;
+    }
+    .annotate {
+      position: absolute;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      color: oklch(0.92 0.1 305);
+      background: oklch(0.27 0.07 305);
+      border: 1px solid oklch(0.45 0.12 305);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div style="display: flex; gap: 60px; align-items: flex-start;">
+    <div class="stage">
+      <div class="section-label" style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--muted);">Shared Spaces</div>
+      <div class="space-row">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" style="transform: rotate(90deg);"><path d="m9 6 6 6-6 6" /></svg>
+        <svg class="icon icon-md" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+        <span class="name">team-research</span>
+        <span class="tag tag-shared" style="height: 18px; padding: 0 6px; font-size: 10px;">shared</span>
+        <button class="menu-btn" data-state="open">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="18" cy="12" r="1" /></svg>
+        </button>
+
+        <div class="menu" role="menu">
+          <div class="menu-item">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" /></svg>
+            <span>Edit space</span>
+            <span class="shortcut">⌘E</span>
+          </div>
+          <div class="menu-item">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+            <span>Refresh index</span>
+          </div>
+          <div class="menu-item">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h12" /></svg>
+            <span>Open in History</span>
+          </div>
+          <div class="menu-divider"></div>
+          <div class="menu-item disabled">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9 12h6M12 9v6" /></svg>
+            <span>New page in this space</span>
+          </div>
+          <div class="menu-divider"></div>
+          <div class="menu-item danger">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
+            <span>Archive space…</span>
+          </div>
+        </div>
+      </div>
+      <div style="height: 220px;"></div>
+
+      <div class="annotate" style="left: 320px; top: 62px; white-space: nowrap;">
+        Trigger: hover/focus reveals btn (28×26 hit, ⌘E shortcut for keyboard)
+      </div>
+      <div class="annotate" style="left: 320px; top: 110px; white-space: nowrap;">
+        Default space: Archive disabled with "Default space cannot be archived" tooltip
+      </div>
+      <div class="annotate" style="left: 320px; top: 218px; white-space: nowrap;">
+        Single-source actions only — bulk ops live in Settings → Spaces
+      </div>
+    </div>
+  </div>
+</body>
+</html>

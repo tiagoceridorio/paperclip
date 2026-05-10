@@ -1,0 +1,207 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="_tokens.css" />
+  <style>
+    body { background: var(--bg); }
+    .frame {
+      width: 390px;
+      min-height: 844px;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .topbar .menu, .topbar .back {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: inline-grid; place-items: center;
+      color: var(--fg);
+    }
+    .topbar .title {
+      flex: 1;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .nav-row {
+      display: flex; gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px; font-weight: 500;
+      border: 1px solid var(--border);
+      background: var(--card);
+      white-space: nowrap;
+    }
+    .pill.active { background: oklch(0.27 0.06 250); color: oklch(0.85 0.1 250); border-color: oklch(0.4 0.12 250); }
+
+    .body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .space-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .space-card .label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      margin-bottom: 6px;
+    }
+    .space-card .row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      min-height: 48px;
+    }
+    .space-card .row .name { flex: 1; font-weight: 600; font-size: 14px; }
+    .space-card .row .chev { color: var(--muted); }
+    .space-card .meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+    .tile {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tile h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .tile p { margin: 0; font-size: 12px; color: var(--muted); }
+    .tile .input {
+      height: 44px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      padding: 0 12px;
+      font-size: 14px;
+      width: 100%;
+      font-family: inherit;
+    }
+    .tile textarea {
+      min-height: 100px;
+      resize: vertical;
+      padding: 10px 12px;
+      font-size: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      font-family: inherit;
+    }
+    .drop {
+      min-height: 100px;
+      border: 1.5px dashed var(--border);
+      border-radius: 8px;
+      display: grid; place-items: center;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .sticky-foot {
+      position: sticky;
+      bottom: 0;
+      padding: 12px 16px;
+      background: linear-gradient(to top, var(--bg) 70%, transparent);
+      display: flex;
+      gap: 8px;
+    }
+    .sticky-foot .btn {
+      flex: 1;
+      height: 48px;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .callout {
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="topbar">
+      <button class="back">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18" /></svg>
+      </button>
+      <div class="title">Add Content</div>
+      <button class="menu">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="18" cy="12" r="1" /></svg>
+      </button>
+    </div>
+    <div class="nav-row">
+      <span class="pill"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 7h18M5 7v13h14V7" /></svg> Wiki</span>
+      <span class="pill"><svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9 11h6M9 14h4" /></svg> Ask</span>
+      <span class="pill active"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg> Add Content</span>
+      <span class="pill"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 7v5l3 2" /><circle cx="12" cy="12" r="9" /></svg> History</span>
+      <span class="pill"><svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /></svg> Settings</span>
+    </div>
+
+    <div class="body">
+      <div class="space-card">
+        <div class="label">Destination space</div>
+        <div class="row">
+          <svg class="icon icon-md" viewBox="0 0 24 24" style="color: oklch(0.85 0.1 250);"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+          <div class="name">team-research</div>
+          <span class="tag tag-shared" style="height: 18px; padding: 0 6px; font-size: 10px;">shared</span>
+          <svg class="icon icon-sm chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg>
+        </div>
+        <div class="meta">Tap to switch · last used selected by default</div>
+      </div>
+
+      <div class="tile">
+        <h3>From URL</h3>
+        <p>Snapshot a webpage into <strong>team-research</strong>.</p>
+        <input class="input" placeholder="https://" />
+      </div>
+
+      <div class="tile">
+        <h3>Paste markdown</h3>
+        <p>Capture any markdown or plain text.</p>
+        <textarea placeholder="Paste content…"></textarea>
+      </div>
+
+      <div class="tile">
+        <h3>Files</h3>
+        <p>Tap to choose; opens the ingest modal pre-bound to <strong>team-research</strong>.</p>
+        <div class="drop">Tap to choose files</div>
+      </div>
+
+      <div class="callout">
+        Switching the space resets the in-progress ingest. To copy pages between spaces, use Settings → Spaces.
+      </div>
+    </div>
+
+    <div class="sticky-foot">
+      <button class="btn btn-primary">Capture into team-research</button>
+    </div>
+  </div>
+</body>
+</html>

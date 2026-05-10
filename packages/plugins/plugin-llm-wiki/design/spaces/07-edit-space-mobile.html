@@ -1,0 +1,298 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="_tokens.css" />
+  <style>
+    body { background: var(--bg); }
+    .frame {
+      width: 390px;
+      min-height: 844px;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .topbar .back, .topbar .menu {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: inline-grid; place-items: center;
+      color: var(--fg);
+    }
+    .topbar .title { flex: 1; font-size: 15px; font-weight: 600; }
+    .topbar .crumb { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+
+    .body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .hero {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hero .name {
+      font-size: 16px;
+      font-weight: 600;
+      flex: 1;
+    }
+    .hero .meta {
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .section-head {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .row {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-height: 56px;
+    }
+    .row:last-child { border-bottom: 0; }
+    .row .row-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .row .row-value {
+      font-size: 13.5px;
+      color: var(--fg);
+      word-break: break-all;
+    }
+    .row.button-row {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .row .toggle .track {
+      width: 36px; height: 20px;
+      background: var(--border);
+      border-radius: 999px;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .row .toggle.on .track { background: oklch(0.55 0.16 145); }
+    .row .toggle .track::after {
+      content: ""; position: absolute;
+      top: 2px; left: 2px;
+      width: 16px; height: 16px;
+      background: white; border-radius: 999px;
+      transition: transform 0.15s;
+    }
+    .row .toggle.on .track::after { transform: translateX(16px); }
+
+    .health-row {
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12.5px;
+    }
+    .health-row .check {
+      width: 16px; height: 16px;
+      border-radius: 999px;
+      background: oklch(0.27 0.06 145);
+      color: oklch(0.85 0.1 145);
+      display: inline-grid; place-items: center;
+      flex-shrink: 0;
+    }
+    .health-row.warn .check {
+      background: oklch(0.27 0.07 70);
+      color: oklch(0.88 0.1 70);
+    }
+    .health-row .label { flex: 1; }
+    .health-row .fix {
+      font-size: 11.5px;
+      color: oklch(0.85 0.1 250);
+    }
+
+    .danger {
+      border-color: oklch(0.42 0.18 25 / 0.6);
+    }
+    .danger .section-head { color: oklch(0.85 0.13 25); }
+    .danger .row .row-value.btn-text { color: oklch(0.85 0.13 25); }
+
+    .input {
+      height: 44px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      padding: 0 12px;
+      font-size: 14px;
+      width: 100%;
+      font-family: inherit;
+    }
+    .input.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    .callout-warn {
+      background: oklch(0.22 0.05 70);
+      color: oklch(0.88 0.1 70);
+      border: 1px solid oklch(0.45 0.12 70);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12px;
+      margin: 0 16px 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="topbar">
+      <button class="back">
+        <svg class="icon" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6" /></svg>
+      </button>
+      <div style="flex: 1;">
+        <div class="crumb">Spaces · Edit</div>
+        <div class="title" style="padding: 0;">team-research</div>
+      </div>
+      <button class="menu">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="18" cy="12" r="1" /></svg>
+      </button>
+    </div>
+
+    <div class="body">
+      <div class="hero">
+        <svg class="icon icon-md" viewBox="0 0 24 24" style="color: oklch(0.85 0.1 250);"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+        <div style="flex: 1;">
+          <div class="name">team-research</div>
+          <div class="meta">Local folder · 12 pages · 3 sources</div>
+        </div>
+        <span class="tag tag-shared" style="height: 22px; padding: 0 8px;">shared</span>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button class="btn" style="flex: 1; height: 44px; justify-content: center; border: 1px solid var(--border);">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+          Refresh
+        </button>
+        <button class="btn btn-primary" style="flex: 1; height: 44px; justify-content: center;">
+          <svg class="icon icon-sm" viewBox="0 0 24 24" style="color: var(--primary-fg);"><path d="M12 5v14M5 12h14" /></svg>
+          Add content
+        </button>
+      </div>
+
+      <div class="section">
+        <div class="section-head">Identity</div>
+        <div class="row">
+          <span class="row-label">Display name</span>
+          <input class="input" value="team-research" />
+        </div>
+        <div class="row">
+          <span class="row-label">Slug · locked</span>
+          <input class="input mono" value="team-research" disabled style="opacity: 0.7;" />
+        </div>
+        <div class="row button-row">
+          <span class="row-value">Type</span>
+          <span class="tag tag-shared" style="height: 22px; padding: 0 8px;">Folder</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">Folder &amp; Health</div>
+        <div class="row">
+          <span class="row-label">Path</span>
+          <span class="row-value" style="font-family: ui-monospace; font-size: 12px;">/Users/jane/wiki-root/spaces/team-research</span>
+        </div>
+        <div style="padding: 6px 0;">
+          <div class="health-row">
+            <span class="check"><svg width="9" height="9" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7" stroke="currentColor" fill="none" stroke-width="3" /></svg></span>
+            <span class="label">Readable / writable</span>
+          </div>
+          <div class="health-row">
+            <span class="check"><svg width="9" height="9" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7" stroke="currentColor" fill="none" stroke-width="3" /></svg></span>
+            <span class="label">raw/, wiki/ exist</span>
+          </div>
+          <div class="health-row warn">
+            <span class="check"><svg width="9" height="9" viewBox="0 0 24 24"><path d="M12 8v4M12 16v0" stroke="currentColor" fill="none" stroke-width="3" /></svg></span>
+            <span class="label">AGENTS.md missing</span>
+            <span class="fix">Recreate</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">Maintenance</div>
+        <div class="row button-row">
+          <div>
+            <span class="row-value">Lint &amp; checks</span>
+            <div class="row-label">Runs on company cadence</div>
+          </div>
+          <span class="toggle on"><span class="track"></span></span>
+        </div>
+        <div class="row button-row">
+          <div>
+            <span class="row-value">Auto distillation</span>
+            <div class="row-label">Backfills pages from sources</div>
+          </div>
+          <span class="toggle on"><span class="track"></span></span>
+        </div>
+        <div class="row">
+          <span class="row-label">Billing code</span>
+          <input class="input mono" value="research-2026" />
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          Access
+          <span class="tag tag-future" style="margin-left: 6px; height: 16px; padding: 0 6px; font-size: 9.5px; vertical-align: middle;">Future enforcement</span>
+        </div>
+        <div class="callout-warn">Stored only — not enforced yet. Everyone in the company can still see this space.</div>
+        <div class="row button-row">
+          <span class="row-value">Scope</span>
+          <span class="tag tag-shared" style="height: 22px; padding: 0 8px;">Shared</span>
+        </div>
+        <div class="row">
+          <span class="row-label">Owner user</span>
+          <input class="input" value="jane.doe@paperclip.ing" />
+        </div>
+        <div class="row">
+          <span class="row-label">Owner team key</span>
+          <input class="input mono" value="research" />
+        </div>
+      </div>
+
+      <div class="section danger">
+        <div class="section-head">Danger zone</div>
+        <div class="row">
+          <span class="row-label">Hides this space from sidebar and pauses lint/index</span>
+          <span class="row-value btn-text">Archive space…</span>
+        </div>
+        <div class="row">
+          <span class="row-label">Removes DB rows; on-disk files are preserved</span>
+          <span class="row-value btn-text">Delete space…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

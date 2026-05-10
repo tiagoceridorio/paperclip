@@ -1,0 +1,223 @@
+/* Mirrors the LLM Wiki plugin tokens (dark mode) so mockups match production. */
+:root {
+  --border: oklch(0.269 0 0);
+  --card: oklch(0.205 0 0);
+  --bg: oklch(0.145 0 0);
+  --fg: oklch(0.985 0 0);
+  --muted: oklch(0.708 0 0);
+  --muted-soft: oklch(0.55 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-hover: oklch(0.32 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-fg: oklch(0.205 0 0);
+  --destructive: oklch(0.637 0.237 25.331);
+  --status-done: oklch(0.65 0.16 145);
+  --status-running: oklch(0.7 0.13 200);
+  --status-blocked: oklch(0.6 0.21 25);
+  --status-todo: oklch(0.6 0.17 250);
+  --space-tint: oklch(0.27 0.06 250);
+  --space-tint-fg: oklch(0.85 0.1 250);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button {
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.frame {
+  background: var(--bg);
+  color: var(--fg);
+  display: grid;
+  min-height: 100vh;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.icon-sm {
+  width: 12px;
+  height: 12px;
+}
+
+.icon-md {
+  width: 16px;
+  height: 16px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-fg);
+  border-color: var(--primary);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.btn-ghost:hover {
+  background: var(--accent);
+  color: var(--fg);
+}
+
+.btn-icon {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.btn-icon:hover,
+.btn-icon[data-state="hover"] {
+  background: var(--accent);
+  color: var(--fg);
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  background: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--fg);
+}
+
+.callout {
+  background: oklch(0.2 0.04 250);
+  color: oklch(0.85 0.08 250);
+  border: 1px solid oklch(0.4 0.1 250);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.callout.warn {
+  background: oklch(0.22 0.05 70);
+  color: oklch(0.88 0.1 70);
+  border-color: oklch(0.45 0.12 70);
+}
+
+.callout.success {
+  background: oklch(0.2 0.05 145);
+  color: oklch(0.85 0.1 145);
+  border-color: oklch(0.4 0.12 145);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.tag-future {
+  background: oklch(0.27 0.07 305);
+  color: oklch(0.85 0.1 305);
+}
+
+.tag-soon {
+  background: oklch(0.25 0 0);
+  color: var(--muted);
+  border: 1px dashed var(--border);
+}
+
+.tag-shared {
+  background: var(--space-tint);
+  color: var(--space-tint-fg);
+}
+
+.health-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 6px 0;
+}
+
+.health-row .check {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: oklch(0.27 0.06 145);
+  color: oklch(0.85 0.1 145);
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.health-row.warn .check {
+  background: oklch(0.27 0.07 70);
+  color: oklch(0.88 0.1 70);
+}
+
+.health-row .label {
+  flex: 1;
+  color: var(--fg);
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0;
+}

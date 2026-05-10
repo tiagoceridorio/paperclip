@@ -1,0 +1,398 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="_tokens.css" />
+  <style>
+    body { background: var(--bg); }
+    .stage {
+      width: 1440px;
+      min-height: 900px;
+      display: grid;
+      grid-template-columns: 264px 1fr;
+      background: var(--bg);
+    }
+    aside {
+      border-right: 1px solid var(--border);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    aside .group { margin-top: 12px; }
+    aside .group-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+      padding: 0 8px;
+      margin-bottom: 6px;
+    }
+    aside .row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    aside .row.active {
+      background: var(--accent);
+      color: var(--fg);
+      font-weight: 500;
+    }
+    aside .row:hover { background: oklch(0.269 0 0 / 0.5); color: var(--fg); }
+    aside .crumb {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; font-size: 12px; color: var(--muted);
+    }
+
+    .panel {
+      padding: 28px;
+      max-width: 920px;
+    }
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 22px;
+    }
+    .panel-header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .panel-header .sub {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .panel-header .crumb {
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .card-head {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-head .title {
+      font-size: 14px;
+      font-weight: 600;
+      flex: 1;
+    }
+    .card-head .desc {
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+    .card-body {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      align-items: center;
+      gap: 16px;
+    }
+    .field-row.stack { grid-template-columns: 1fr; }
+    .field-row .label {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+    .field-row .help {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .field-row .control {
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .input {
+      height: 34px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      padding: 0 12px;
+      font-size: 13px;
+      font-family: inherit;
+      width: 100%;
+    }
+    .input.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .input[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toggle .track {
+      width: 32px; height: 18px;
+      background: var(--border);
+      border-radius: 999px;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .toggle.on .track {
+      background: oklch(0.55 0.16 145);
+    }
+    .toggle .track::after {
+      content: "";
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 14px; height: 14px;
+      background: white;
+      border-radius: 999px;
+      transition: transform 0.15s;
+    }
+    .toggle.on .track::after { transform: translateX(14px); }
+
+    .health-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-top: 8px;
+    }
+
+    .anno {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      color: oklch(0.92 0.1 305);
+      background: oklch(0.27 0.07 305);
+      border: 1px solid oklch(0.45 0.12 305);
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <aside>
+      <div class="crumb">
+        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6" /></svg>
+        <span>Wiki / Settings</span>
+      </div>
+      <div class="group">
+        <div class="group-label">Workspace</div>
+        <div class="row">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+          Root folder
+        </div>
+        <div class="row">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h12" /></svg>
+          Distillation
+        </div>
+        <div class="row">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /></svg>
+          Routines
+        </div>
+      </div>
+      <div class="group">
+        <div class="group-label">Spaces</div>
+        <div class="row active">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+          team-research
+        </div>
+        <div class="row">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+          default
+        </div>
+        <div class="row">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+          customer-feedback
+        </div>
+        <div class="row" style="color: var(--muted);">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+          Add space…
+        </div>
+      </div>
+    </aside>
+
+    <div class="panel">
+      <div class="panel-header">
+        <svg class="icon" viewBox="0 0 24 24" style="width: 28px; height: 28px; color: oklch(0.85 0.1 250); margin-top: 2px;"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+        <div style="flex: 1;">
+          <div class="crumb">Spaces · Edit</div>
+          <h1>team-research</h1>
+          <div class="sub">Local folder · 12 pages · 3 sources · indexed 2 minutes ago</div>
+        </div>
+        <button class="btn btn-ghost" style="border: 1px solid var(--border);">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+          Refresh index
+        </button>
+        <button class="btn">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+          Open ingest
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M5 8 12 3l7 5v8l-7 5-7-5z" /></svg>
+          <div class="title">Identity</div>
+        </div>
+        <div class="card-body">
+          <div class="field-row">
+            <label class="label">Display name<div class="help">Shown in the sidebar.</div></label>
+            <div class="control"><input class="input" value="team-research" /></div>
+          </div>
+          <div class="field-row">
+            <label class="label">Slug<div class="help">URL segment; lock by default.</div></label>
+            <div class="control">
+              <input class="input mono" value="team-research" disabled />
+              <span style="font-size: 11px; color: var(--muted);">Slug is locked once a space has indexed pages. Contact platform team to migrate.</span>
+            </div>
+          </div>
+          <div class="field-row">
+            <label class="label">Type</label>
+            <div class="control" style="display: flex; align-items: center; gap: 8px;">
+              <span class="tag tag-shared" style="height: 22px; padding: 0 8px;">Folder</span>
+              <span style="font-size: 12px; color: var(--muted);">(Cloud connectors coming soon)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+          <div class="title">Folder source &amp; health</div>
+        </div>
+        <div class="card-body">
+          <div class="field-row">
+            <label class="label">Mode</label>
+            <div class="control">
+              <span style="font-size: 13px;">New managed folder</span>
+              <span class="help">Created under the configured wiki root.</span>
+            </div>
+          </div>
+          <div class="field-row">
+            <label class="label">Path</label>
+            <div class="control">
+              <input class="input mono" value="/Users/jane/wiki-root/spaces/team-research" />
+              <span class="help">Real path: same · access: read &amp; write</span>
+            </div>
+          </div>
+          <div class="field-row stack">
+            <div class="health-list">
+              <div class="health-row">
+                <span class="check"><svg width="8" height="8" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7" stroke="currentColor" fill="none" stroke-width="3" /></svg></span>
+                <span class="label">Folder readable</span>
+                <span style="color: var(--muted); font-size: 11px;">/Users/jane/wiki-root/spaces/team-research</span>
+              </div>
+              <div class="health-row">
+                <span class="check"><svg width="8" height="8" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7" stroke="currentColor" fill="none" stroke-width="3" /></svg></span>
+                <span class="label">Folder writable</span>
+              </div>
+              <div class="health-row">
+                <span class="check"><svg width="8" height="8" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7" stroke="currentColor" fill="none" stroke-width="3" /></svg></span>
+                <span class="label">Required dirs (raw/, wiki/) present</span>
+              </div>
+              <div class="health-row warn">
+                <span class="check"><svg width="8" height="8" viewBox="0 0 24 24"><path d="M12 8v4M12 16v0" stroke="currentColor" fill="none" stroke-width="3" /></svg></span>
+                <span class="label">AGENTS.md missing</span>
+                <button class="btn btn-ghost" style="border: 1px solid var(--border); height: 26px; padding: 0 10px; font-size: 11.5px;">Recreate baseline</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /></svg>
+          <div class="title">Maintenance</div>
+        </div>
+        <div class="card-body">
+          <div class="field-row">
+            <label class="label">Lint &amp; structural checks<div class="help">Runs on the company lint cadence.</div></label>
+            <div class="control"><div class="toggle on"><span class="track"></span><span style="font-size: 12px;">Enabled</span></div></div>
+          </div>
+          <div class="field-row">
+            <label class="label">Auto distillation<div class="help">Backfills wiki pages from new sources.</div></label>
+            <div class="control"><div class="toggle on"><span class="track"></span><span style="font-size: 12px;">Enabled</span></div></div>
+          </div>
+          <div class="field-row">
+            <label class="label">Per-space billing code<div class="help">Optional · used on operation issues.</div></label>
+            <div class="control"><input class="input mono" value="research-2026" /></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" /><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg>
+          <div class="title">Access</div>
+          <span class="tag tag-future" style="margin-left: auto;">Future enforcement</span>
+        </div>
+        <div class="card-body">
+          <div class="callout warn">
+            Permissions are stored but <strong>not enforced</strong> in this release. Anyone in the company can still read and write every space.
+          </div>
+          <div class="field-row">
+            <label class="label">Scope</label>
+            <div class="control" style="display: flex; gap: 8px;">
+              <span class="tag" style="background: var(--space-tint); color: var(--space-tint-fg); height: 22px; padding: 0 10px;">Shared</span>
+              <span class="tag tag-future" style="height: 22px; padding: 0 10px;">Personal · stored only</span>
+              <span class="tag tag-future" style="height: 22px; padding: 0 10px;">Team · stored only</span>
+            </div>
+          </div>
+          <div class="field-row">
+            <label class="label">Owner user<div class="help">Stored for upcoming permission rules.</div></label>
+            <div class="control"><input class="input" value="jane.doe@paperclip.ing" /></div>
+          </div>
+          <div class="field-row">
+            <label class="label">Owner team key</label>
+            <div class="control"><input class="input mono" value="research" /></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="border-color: oklch(0.42 0.18 25 / 0.6);">
+        <div class="card-head">
+          <svg class="icon" viewBox="0 0 24 24" style="color: oklch(0.7 0.18 25);"><path d="M12 9v4M12 17v0M3 18 12 3l9 15z" /></svg>
+          <div class="title" style="color: oklch(0.85 0.13 25);">Danger zone</div>
+        </div>
+        <div class="card-body">
+          <div class="field-row">
+            <label class="label">Archive this space<div class="help">Hides it from the sidebar and stops scheduled lint/index. Pages remain on disk.</div></label>
+            <div class="control"><button class="btn" style="border-color: oklch(0.42 0.18 25 / 0.6); color: oklch(0.85 0.13 25);">Archive…</button></div>
+          </div>
+          <div class="field-row">
+            <label class="label">Delete<div class="help">Removes DB rows. Files on disk are kept and must be removed manually.</div></label>
+            <div class="control"><button class="btn" style="border-color: oklch(0.42 0.18 25); background: oklch(0.27 0.1 25); color: oklch(0.92 0.13 25);">Delete space…</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

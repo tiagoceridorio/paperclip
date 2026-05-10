@@ -1,0 +1,290 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="_tokens.css" />
+  <style>
+    body { display: flex; }
+    .shell {
+      display: grid;
+      grid-template-columns: 264px 1fr;
+      width: 1440px;
+      height: 900px;
+      background: var(--bg);
+    }
+    aside.wiki-sidebar {
+      border-right: 1px solid var(--border);
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .crumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .nav-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      border-top: 1px solid var(--border);
+      padding: 12px;
+    }
+    .nav-scroll-bottom {
+      border-top: 1px solid var(--border);
+      padding: 12px;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgb(245 245 245 / 0.8);
+      cursor: pointer;
+    }
+    .nav-link:hover {
+      background: oklch(0.269 0 0 / 0.5);
+      color: var(--fg);
+    }
+    .nav-link.active {
+      background: var(--accent);
+      color: var(--fg);
+    }
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      margin: 14px 0 6px;
+      height: 24px;
+    }
+    .section-heading .label {
+      flex: 1;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+    }
+    .space-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      position: relative;
+    }
+    .space-row:hover { background: oklch(0.269 0 0 / 0.5); }
+    .space-row .chev {
+      width: 14px; height: 14px; color: var(--muted); flex-shrink: 0;
+    }
+    .space-row .space-name {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--fg);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .space-row .menu-btn {
+      opacity: 0;
+      transition: opacity 80ms ease;
+    }
+    .space-row:hover .menu-btn,
+    .space-row[data-hover="true"] .menu-btn { opacity: 1; }
+    .space-row.active { background: var(--accent); }
+    .tree {
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      margin-bottom: 2px;
+    }
+    .tree-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12.5px;
+      color: rgb(245 245 245 / 0.78);
+      cursor: pointer;
+    }
+    .tree-row:hover { background: oklch(0.269 0 0 / 0.4); }
+    .tree-row.selected { background: var(--accent); color: var(--fg); }
+    .tree-row .indent { width: 10px; }
+    .tree-row .file-icon { color: var(--muted); }
+    .tree-row.dir .label { font-weight: 500; }
+
+    /* Right canvas hint */
+    .canvas {
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .canvas .crumbs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .canvas h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0;
+    }
+    .canvas .body {
+      max-width: 720px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* Annotation overlays */
+    .anno {
+      position: absolute;
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: oklch(0.27 0.07 305);
+      color: oklch(0.92 0.1 305);
+      border: 1px solid oklch(0.45 0.12 305);
+      padding: 4px 8px;
+      border-radius: 4px;
+      pointer-events: none;
+      white-space: nowrap;
+      box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
+    }
+    .anno::before {
+      content: "";
+      position: absolute;
+      width: 0; height: 0;
+      border: 5px solid transparent;
+    }
+    .anno-right::before { left: -10px; top: 50%; margin-top: -5px; border-right-color: oklch(0.45 0.12 305); }
+    .anno-left::before { right: -10px; top: 50%; margin-top: -5px; border-left-color: oklch(0.45 0.12 305); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="wiki-sidebar" style="position: relative;">
+      <div class="crumb">
+        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6" /></svg>
+        <span>Paperclip</span>
+      </div>
+      <div class="nav-scroll">
+        <nav style="display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px;">
+          <div class="nav-link"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9 11h6M9 14h4" /></svg><span>Ask</span></div>
+          <div class="nav-link" data-new="true">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+            <span>Add Content</span>
+          </div>
+        </nav>
+
+        <div class="section-heading">
+          <span class="label">Shared Spaces</span>
+          <button class="btn-icon" title="Create space" data-state="hover">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
+        </div>
+
+        <!-- default space, expanded -->
+        <div class="space-row active" data-hover="true">
+          <svg class="chev" viewBox="0 0 24 24" style="transform: rotate(90deg);"><path d="m9 6 6 6-6 6" /></svg>
+          <svg class="icon icon-md" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+          <span class="space-name">default</span>
+          <span class="tag tag-shared" style="height: 18px; padding: 0 6px; font-size: 10px;">shared</span>
+          <button class="btn-icon" style="width: 22px; height: 22px;" title="Space menu">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="18" cy="12" r="1" /></svg>
+          </button>
+        </div>
+        <div class="tree">
+          <div class="tree-row dir">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" style="transform: rotate(90deg);"><path d="m9 6 6 6-6 6" /></svg>
+            <svg class="icon icon-sm file-icon" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+            <span class="label">wiki</span>
+          </div>
+          <div class="tree-row" style="padding-left: 26px;">
+            <svg class="icon icon-sm file-icon" viewBox="0 0 24 24"><path d="M14 3v5h5M5 21V3h9l5 5v13z" /></svg>
+            <span class="label">index.md</span>
+          </div>
+          <div class="tree-row selected" style="padding-left: 26px;">
+            <svg class="icon icon-sm file-icon" viewBox="0 0 24 24"><path d="M14 3v5h5M5 21V3h9l5 5v13z" /></svg>
+            <span class="label">log.md</span>
+          </div>
+          <div class="tree-row dir" style="padding-left: 26px;">
+            <svg class="icon icon-sm file-icon" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></svg>
+            <svg class="icon icon-sm file-icon" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+            <span class="label">sources</span>
+          </div>
+          <div class="tree-row dir" style="padding-left: 26px;">
+            <svg class="icon icon-sm file-icon" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></svg>
+            <svg class="icon icon-sm file-icon" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+            <span class="label">projects</span>
+          </div>
+          <div class="tree-row dir" style="padding-left: 26px;">
+            <svg class="icon icon-sm file-icon" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></svg>
+            <svg class="icon icon-sm file-icon" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+            <span class="label">entities</span>
+          </div>
+          <div class="tree-row dir" style="padding-left: 26px;">
+            <svg class="icon icon-sm file-icon" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></svg>
+            <svg class="icon icon-sm file-icon" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+            <span class="label">concepts</span>
+          </div>
+        </div>
+
+        <!-- second space, collapsed -->
+        <div class="space-row">
+          <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></svg>
+          <svg class="icon icon-md" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+          <span class="space-name">team-research</span>
+          <button class="btn-icon" style="width: 22px; height: 22px;" title="Space menu">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="18" cy="12" r="1" /></svg>
+          </button>
+        </div>
+
+        <!-- third space, collapsed -->
+        <div class="space-row">
+          <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></svg>
+          <svg class="icon icon-md" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+          <span class="space-name">customer-feedback</span>
+        </div>
+        <div style="padding: 8px; font-size: 11px; color: var(--muted-soft);">
+          Pages, sources, ask, lint and history all stay scoped to the selected space.
+        </div>
+      </div>
+      <nav class="nav-scroll-bottom">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div class="nav-link"><svg class="icon" viewBox="0 0 24 24"><path d="M12 7v5l3 2M3 12a9 9 0 1 0 9-9" /></svg><span>History</span></div>
+          <div class="nav-link"><svg class="icon" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h12" /></svg><span>Settings</span></div>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="canvas">
+      <div class="crumbs">
+        <span>default</span>
+        <span>/</span>
+        <span>wiki</span>
+        <span>/</span>
+        <span style="color: var(--fg);">log.md</span>
+      </div>
+      <h1>Wiki log — default space</h1>
+      <div class="body">
+        Page detail content lives here. Breadcrumbs always show the active space slug, and the URL contains <code style="font-family: ui-monospace; background: var(--card); padding: 1px 6px; border-radius: 4px;">/wiki/spaces/default/page/...</code> so deep links carry the space context.
+      </div>
+    </main>
+  </div>
+</body>
+</html>

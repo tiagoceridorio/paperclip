@@ -1,0 +1,321 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="_tokens.css" />
+  <style>
+    body { background: var(--bg); }
+    .stage {
+      width: 1440px;
+      height: 900px;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(at 30% 20%, oklch(0.2 0.04 250 / 0.4), transparent 50%),
+        radial-gradient(at 70% 80%, oklch(0.2 0.04 305 / 0.3), transparent 50%),
+        var(--bg);
+      position: relative;
+    }
+    .scrim {
+      position: absolute;
+      inset: 0;
+      background: rgb(0 0 0 / 0.55);
+      backdrop-filter: blur(6px);
+    }
+    .modal {
+      position: relative;
+      width: 560px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 30px 80px rgb(0 0 0 / 0.6);
+      overflow: hidden;
+      max-height: 760px;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-head {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .modal-head .title {
+      font-size: 16px;
+      font-weight: 600;
+      flex: 1;
+    }
+    .modal-body {
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow-y: auto;
+    }
+    .modal-foot {
+      padding: 14px 22px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .label { font-size: 12px; font-weight: 500; color: var(--fg); }
+    .help { font-size: 11px; color: var(--muted); }
+    .input {
+      height: 36px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      padding: 0 12px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .input.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .input:focus { outline: 2px solid oklch(0.45 0.12 250); outline-offset: 0; }
+
+    .seg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 4px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .seg-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 12px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .seg-item.selected {
+      background: var(--accent);
+      border-color: var(--border);
+    }
+    .seg-item.disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .seg-item .head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .seg-item .head .name {
+      font-size: 13px;
+      font-weight: 600;
+      flex: 1;
+    }
+    .seg-item .desc {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .radio-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      cursor: pointer;
+    }
+    .radio-row.selected {
+      border-color: oklch(0.45 0.12 250);
+      background: oklch(0.18 0.04 250 / 0.7);
+    }
+    .radio-row .dot {
+      width: 14px; height: 14px;
+      border-radius: 999px;
+      border: 1px solid var(--muted);
+      margin-top: 2px;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .radio-row.selected .dot { border-color: oklch(0.7 0.12 250); }
+    .radio-row.selected .dot::after {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      background: oklch(0.7 0.12 250);
+      border-radius: 999px;
+    }
+    .radio-row .body { flex: 1; }
+    .radio-row .body .name { font-size: 13px; font-weight: 500; }
+    .radio-row .body .desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .access-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .access-tile {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: var(--bg);
+    }
+    .access-tile.selected {
+      border-color: oklch(0.45 0.12 250);
+      background: oklch(0.18 0.04 250 / 0.7);
+    }
+    .access-tile.future {
+      opacity: 0.7;
+    }
+    .access-tile .head {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .access-tile .name { font-size: 12.5px; font-weight: 600; }
+    .access-tile .desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .anno {
+      position: absolute;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      color: oklch(0.92 0.1 305);
+      background: oklch(0.27 0.07 305);
+      border: 1px solid oklch(0.45 0.12 305);
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="scrim"></div>
+    <div class="modal">
+      <div class="modal-head">
+        <svg class="icon icon-md" viewBox="0 0 24 24" style="color: oklch(0.85 0.1 250);"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+        <div class="title">Create shared space</div>
+        <button class="btn-icon">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18" /></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="callout">
+          Spaces partition pages, sources, ingest history, ask, and lint. Create one per project, team, or dataset you want kept separate.
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="label">Display name</label>
+            <input class="input" value="Team research" />
+          </div>
+          <div class="field">
+            <label class="label">Slug</label>
+            <input class="input mono" value="team-research" />
+            <span class="help">Used in URLs · <code>/wiki/spaces/<b>team-research</b>/…</code></span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Type</label>
+          <div class="seg">
+            <div class="seg-item selected">
+              <div class="head">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z" /></svg>
+                <div class="name">Folder</div>
+                <span class="tag tag-shared" style="height: 18px; padding: 0 6px; font-size: 10px;">enabled</span>
+              </div>
+              <div class="desc">Local folder on this machine.</div>
+            </div>
+            <div class="seg-item disabled">
+              <div class="head">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M3 15a4 4 0 0 1 1-7.9A6 6 0 0 1 16 5a4 4 0 0 1 4 4 4 4 0 0 1 0 8H6a3 3 0 0 1-3-2z" /></svg>
+                <div class="name">Cloud</div>
+                <span class="tag tag-soon">Coming soon</span>
+              </div>
+              <div class="desc">Notion, Google Drive, S3 connectors.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Folder source</label>
+          <div class="radio-group">
+            <div class="radio-row selected">
+              <span class="dot"></span>
+              <div class="body">
+                <div class="name">New managed folder</div>
+                <div class="desc">Creates <code>spaces/team-research/</code> under the configured wiki root, with the standard <code>raw/</code>, <code>wiki/</code>, AGENTS.md and IDEA.md scaffold.</div>
+              </div>
+            </div>
+            <div class="radio-row">
+              <span class="dot"></span>
+              <div class="body">
+                <div class="name">Existing folder under wiki root</div>
+                <div class="desc">Bind to a folder already inside the wiki root. Path-containment checks must pass.</div>
+              </div>
+            </div>
+            <div class="radio-row" style="opacity: 0.55;">
+              <span class="dot"></span>
+              <div class="body">
+                <div class="name">Existing absolute path <span class="tag tag-soon" style="margin-left: 6px;">Pending host capability</span></div>
+                <div class="desc">Disabled until the host adds dynamic plugin local-folder bindings (security-reviewed).</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Access scope</label>
+          <div class="access-grid">
+            <div class="access-tile selected">
+              <div class="head">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" /><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /><circle cx="17" cy="9" r="3" /></svg>
+                <div class="name">Shared</div>
+              </div>
+              <div class="desc">Everyone in the company.</div>
+            </div>
+            <div class="access-tile future">
+              <div class="head">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M5 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2" /></svg>
+                <div class="name">Personal</div>
+                <span class="tag tag-future" style="height: 16px; padding: 0 5px; font-size: 9.5px;">Future</span>
+              </div>
+              <div class="desc">Only the owner. Stored, not enforced.</div>
+            </div>
+            <div class="access-tile future">
+              <div class="head">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" /><circle cx="17" cy="7" r="3" /><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg>
+                <div class="name">Team</div>
+                <span class="tag tag-future" style="height: 16px; padding: 0 5px; font-size: 9.5px;">Future</span>
+              </div>
+              <div class="desc">A named team. Stored, not enforced.</div>
+            </div>
+          </div>
+          <span class="help">Personal/Team scopes are saved as metadata for the upcoming permissions feature. They do not block access today.</span>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost">Cancel</button>
+        <button class="btn btn-primary">
+          <svg class="icon icon-sm" viewBox="0 0 24 24" style="color: var(--primary-fg);"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          Create space
+        </button>
+      </div>
+    </div>
+
+    <div class="anno" style="left: calc(50% + 300px); top: 110px;">name auto-generates slug; both editable</div>
+    <div class="anno" style="left: calc(50% + 300px); top: 240px;">Cloud disabled but visible — sets product roadmap expectation</div>
+    <div class="anno" style="left: calc(50% + 300px); top: 410px;">Third radio disabled until host capability lands (PAP-3635 phase 3)</div>
+    <div class="anno" style="left: calc(50% + 300px); top: 600px;">Personal/Team are metadata only — explicit "Future" tag prevents misread</div>
+  </div>
+</body>
+</html>
