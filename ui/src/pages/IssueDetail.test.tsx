@@ -915,6 +915,59 @@ describe("IssueDetail", () => {
     expect(mockIssueChatThreadRender.mock.calls.at(-1)?.[0].footer).toBeTruthy();
   });
 
+  it("uses the first child issue as next navigation for parent issues without a sibling next", async () => {
+    const parent = createIssue({
+      id: "issue-parent",
+      identifier: "PAP-10",
+      issueNumber: 10,
+      parentId: null,
+      title: "Plan parent",
+      createdAt: new Date("2026-04-01T00:00:00.000Z"),
+    });
+    const firstChild = createIssue({
+      id: "issue-child-1",
+      identifier: "PAP-11",
+      issueNumber: 11,
+      parentId: "issue-parent",
+      title: "First child",
+      createdAt: new Date("2026-04-02T00:00:00.000Z"),
+    });
+    const secondChild = createIssue({
+      id: "issue-child-2",
+      identifier: "PAP-12",
+      issueNumber: 12,
+      parentId: "issue-parent",
+      title: "Second child",
+      blockedBy: [{ id: "issue-child-1" }] as Issue["blockedBy"],
+      createdAt: new Date("2026-04-03T00:00:00.000Z"),
+    });
+
+    mockIssuesApi.get.mockResolvedValue(parent);
+    mockIssuesApi.list.mockImplementation((_companyId, filters?: { descendantOf?: string; parentId?: string }) => {
+      if (filters?.descendantOf === "issue-parent") return Promise.resolve([secondChild, firstChild]);
+      return Promise.resolve([]);
+    });
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <IssueDetail />
+        </QueryClientProvider>,
+      );
+    });
+    await flushReact();
+    await flushReact();
+
+    expect(mockIssuesApi.list).toHaveBeenCalledWith("company-1", {
+      descendantOf: "issue-parent",
+      includeBlockedBy: true,
+    });
+    expect(container.querySelector('a[aria-label="Next sub-issue: PAP-11 - First child"]')).toBeTruthy();
+    expect(container.textContent).toContain("Next");
+    expect(container.textContent).toContain("First child");
+    expect(mockIssueChatThreadRender.mock.calls.at(-1)?.[0].footer).toBeTruthy();
+  });
+
   it("passes blocker attention to the issue detail header status icon", async () => {
     mockIssuesApi.get.mockResolvedValue(createIssue({
       status: "blocked",

@@ -1554,10 +1554,10 @@ export function IssueDetail() {
   );
   const showRichSubIssuesSection = shouldRenderRichSubIssuesSection(childIssuesLoading, childIssues.length);
   const siblingNavigation = useMemo(
-    () => issue && !siblingIssuesLoading && !siblingIssuesError
-      ? buildIssueSiblingNavigation(issue, rawSiblingIssues)
+    () => issue && !childIssuesLoading && !siblingIssuesLoading && !siblingIssuesError
+      ? buildIssueSiblingNavigation(issue, rawSiblingIssues, childIssues)
       : null,
-    [issue, rawSiblingIssues, siblingIssuesError, siblingIssuesLoading],
+    [childIssues, childIssuesLoading, issue, rawSiblingIssues, siblingIssuesError, siblingIssuesLoading],
   );
   const openNewSubIssue = useCallback(() => {
     if (!issue) return;

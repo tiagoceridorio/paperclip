@@ -23,7 +23,12 @@ export function IssueSiblingNavigation({ navigation, linkState }: IssueSiblingNa
         <SiblingLink direction="previous" issue={navigation.previous} linkState={linkState} />
       ) : null}
       {navigation.next ? (
-        <SiblingLink direction="next" issue={navigation.next} linkState={linkState} />
+        <SiblingLink
+          direction="next"
+          issue={navigation.next}
+          linkState={linkState}
+          className={!navigation.previous ? "sm:col-start-2" : undefined}
+        />
       ) : null}
     </nav>
   );
@@ -33,10 +38,12 @@ function SiblingLink({
   direction,
   issue,
   linkState,
+  className,
 }: {
   direction: "previous" | "next";
   issue: Issue;
   linkState?: unknown;
+  className?: string;
 }) {
   const issuePathId = issue.identifier ?? issue.id;
   const label = direction === "previous" ? "Previous" : "Next";
@@ -55,6 +62,7 @@ function SiblingLink({
       className={cn(
         "group min-w-0 rounded-lg border border-border bg-card px-3 py-2.5 text-left no-underline transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
         direction === "next" && "sm:text-right",
+        className,
       )}
     >
       <div className="min-w-0 space-y-1.5">

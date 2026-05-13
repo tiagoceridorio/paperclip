@@ -108,7 +108,7 @@ describe("IssueSiblingNavigation", () => {
     expect(node.querySelector(".truncate")?.textContent).toBe("Previous sibling title");
   });
 
-  it("renders only the available edge card without a placeholder", () => {
+  it("keeps a lone next card in the right desktop column", () => {
     const node = render(
       <IssueSiblingNavigation
         navigation={{
@@ -123,6 +123,7 @@ describe("IssueSiblingNavigation", () => {
     const links = Array.from(node.querySelectorAll("a"));
     expect(links).toHaveLength(1);
     expect(links[0].textContent).toContain("Next");
+    expect(links[0].className).toContain("sm:col-start-2");
     expect(node.textContent).not.toContain("Previous");
   });
 });
