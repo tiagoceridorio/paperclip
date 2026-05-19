@@ -506,4 +506,304 @@ describe("Paperclip Triage queue and item ingest", () => {
       code: "guidance_proposal_rejected",
     });
   });
+
+  it("creates a linked work issue from a create_if_missing transition action and records history", async () => {
+    const { harness, plugin: testPlugin } = createHarness();
+    await testPlugin.definition.setup(harness.ctx);
+
+    const ingested = await harness.performAction<{
+      item: { id: string };
+    }>("ingest-item", {
+      companyId: COMPANY_ID,
+      queueKey: "reviews",
+      title: "Draft launch post",
+      content: "# Draft\n\nMake this sharper.",
+      properties: { sourceKind: "fixture", priority: "high" },
+    });
+
+    await harness.performAction("upsert-transition-action", {
+      companyId: COMPANY_ID,
+      queueKey: "reviews",
+      actionKey: "create-work",
+      fromStateKey: "draft",
+      toStateKey: "approved",
+      action: {
+        type: "create_or_update_issue",
+        mode: "create_if_missing",
+        template: {
+          title: "{{item.title}}",
+          description: "{{item.content}}\n\nMetadata:\n{{item.propertiesJson}}",
+          comment: "Triage item moved to {{transition.toStateKey}}.",
+          priority: "high",
+          status: "todo",
+        },
+      },
+    });
+
+    const transitioned = await harness.performAction<{
+      item: { stateKey: string; linkedWorkIssueId: string | null };
+      actionResults: Array<{ result: string; issueId: string | null; commentCreated: boolean }>;
+    }>("transition-item", {
+      companyId: COMPANY_ID,
+      itemId: ingested.item.id,
+      toStateKey: "approved",
+    });
+
+    expect(transitioned.item.stateKey).toBe("approved");
+    expect(transitioned.item.linkedWorkIssueId).toBeTruthy();
+    expect(transitioned.actionResults).toEqual([
+      expect.objectContaining({ result: "created", issueId: transitioned.item.linkedWorkIssueId, commentCreated: true }),
+    ]);
+
+    const issue = await harness.ctx.issues.get(transitioned.item.linkedWorkIssueId!, COMPANY_ID);
+    expect(issue).toMatchObject({
+      title: "Draft launch post",
+      description: expect.stringContaining("Make this sharper."),
+      status: "todo",
+      priority: "high",
+      originId: ingested.item.id,
+    });
+    const comments = await harness.ctx.issues.listComments(transitioned.item.linkedWorkIssueId!, COMPANY_ID);
+    expect(comments).toEqual([expect.objectContaining({ body: "Triage item moved to approved." })]);
+
+    const events = await harness.getData<Array<{ eventType: string; metadata: Record<string, unknown> }>>(
+      "item-events",
+      { companyId: COMPANY_ID, itemId: ingested.item.id },
+    );
+    expect(events.map((event) => event.eventType)).toEqual(expect.arrayContaining([
+      "item.transitioned",
+      "transition.action.executed",
+      "item.ingested.created",
+    ]));
+    expect(events.find((event) => event.eventType === "transition.action.executed")?.metadata)
+      .toMatchObject({ actionKey: "create-work", result: "created", commentCreated: true });
+  });
+
+  it("updates an existing linked work issue from an update_existing transition action", async () => {
+    const { harness, plugin: testPlugin, store } = createHarness();
+    await testPlugin.definition.setup(harness.ctx);
+
+    const issue = await harness.ctx.issues.create({
+      companyId: COMPANY_ID,
+      title: "Old title",
+      status: "todo",
+      priority: "medium",
+    });
+    const ingested = await harness.performAction<{
+      item: { id: string };
+    }>("ingest-item", {
+      companyId: COMPANY_ID,
+      queueKey: "reviews",
+      title: "Needs owner",
+      content: "Please assign this.",
+    });
+    await store.updateItem({
+      companyId: COMPANY_ID,
+      itemId: ingested.item.id,
+      linkedWorkIssueId: issue.id,
+    });
+    await harness.performAction("upsert-transition-action", {
+      companyId: COMPANY_ID,
+      queueKey: "reviews",
+      actionKey: "update-work",
+      fromStateKey: "draft",
+      toStateKey: "approved",
+      action: {
+        type: "create_or_update_issue",
+        mode: "update_existing",
+        template: {
+          title: "Updated: {{item.title}}",
+          comment: "Existing work issue updated for {{transition.toStateKey}}.",
+          priority: "high",
+          status: "in_review",
+        },
+      },
+    });
+
+    const transitioned = await harness.performAction<{
+      actionResults: Array<{ result: string; issueId: string | null; commentCreated: boolean }>;
+    }>("transition-item", {
+      companyId: COMPANY_ID,
+      itemId: ingested.item.id,
+      toStateKey: "approved",
+    });
+
+    expect(transitioned.actionResults).toEqual([
+      expect.objectContaining({ result: "updated", issueId: issue.id, commentCreated: true }),
+    ]);
+    await expect(harness.ctx.issues.get(issue.id, COMPANY_ID)).resolves.toMatchObject({
+      title: "Updated: Needs owner",
+      status: "in_review",
+      priority: "high",
+    });
+    await expect(harness.ctx.issues.listComments(issue.id, COMPANY_ID)).resolves.toEqual([
+      expect.objectContaining({ body: "Existing work issue updated for approved." }),
+    ]);
+  });
+
+  it("create_or_update creates when missing and updates the same linked issue later", async () => {
+    const { harness, plugin: testPlugin } = createHarness();
+    await testPlugin.definition.setup(harness.ctx);
+
+    const ingested = await harness.performAction<{
+      item: { id: string };
+    }>("ingest-item", {
+      companyId: COMPANY_ID,
+      queueKey: "reviews",
+      title: "Reusable handoff",
+      content: "Create once, update later.",
+    });
+    await harness.performAction("upsert-transition-action", {
+      companyId: COMPANY_ID,
+      queueKey: "reviews",
+      actionKey: "create-or-update",
+      fromStateKey: "draft",
+      toStateKey: "approved",
+      action: {
+        type: "create_or_update_issue",
+        mode: "create_or_update",
+        template: {
+          title: "{{item.title}}",
+          description: "{{item.content}}",
+          status: "todo",
+        },
+      },
+    });
+    const first = await harness.performAction<{
+      item: { linkedWorkIssueId: string | null };
+      actionResults: Array<{ result: string; issueId: string | null }>;
+    }>("transition-item", {
+      companyId: COMPANY_ID,
+      itemId: ingested.item.id,
+      toStateKey: "approved",
+    });
+
+    await harness.performAction("upsert-transition-action", {
+      companyId: COMPANY_ID,
+      queueKey: "reviews",
+      actionKey: "finish-work",
+      fromStateKey: "approved",
+      toStateKey: "done",
+      action: {
+        type: "create_or_update_issue",
+        mode: "create_or_update",
+        template: {
+          title: "Finished: {{item.title}}",
+          comment: "Completed from triage.",
+          status: "done",
+        },
+      },
+    });
+    const second = await harness.performAction<{
+      item: { linkedWorkIssueId: string | null };
+      actionResults: Array<{ result: string; issueId: string | null }>;
+    }>("transition-item", {
+      companyId: COMPANY_ID,
+      itemId: ingested.item.id,
+      toStateKey: "done",
+    });
+
+    expect(first.actionResults).toEqual([expect.objectContaining({ result: "created" })]);
+    expect(second.actionResults).toEqual([
+      expect.objectContaining({ result: "updated", issueId: first.item.linkedWorkIssueId }),
+    ]);
+    expect(second.item.linkedWorkIssueId).toBe(first.item.linkedWorkIssueId);
+    await expect(harness.ctx.issues.get(first.item.linkedWorkIssueId!, COMPANY_ID)).resolves.toMatchObject({
+      title: "Finished: Reusable handoff",
+      status: "done",
+    });
+  });
+
+  it("rejects unsupported transition action types and invalid issue templates", async () => {
+    const { harness, plugin: testPlugin } = createHarness();
+    await testPlugin.definition.setup(harness.ctx);
+    await harness.performAction("create-queue", {
+      companyId: COMPANY_ID,
+      queueKey: "reviews",
+      title: "Reviews",
+    });
+
+    await expect(harness.performAction("upsert-transition-action", {
+      companyId: COMPANY_ID,
+      queueKey: "reviews",
+      actionKey: "external-call",
+      fromStateKey: "draft",
+      toStateKey: "approved",
+      action: {
+        type: "webhook",
+        mode: "create_or_update",
+        template: { title: "Nope" },
+      },
+    })).rejects.toMatchObject({
+      status: 422,
+      code: "unsupported_transition_action",
+    });
+
+    await expect(harness.performAction("upsert-transition-action", {
+      companyId: COMPANY_ID,
+      queueKey: "reviews",
+      actionKey: "bad-template",
+      fromStateKey: "draft",
+      toStateKey: "approved",
+      action: {
+        type: "create_or_update_issue",
+        mode: "create_or_update",
+        template: { title: "{{item.title}}", externalUrl: "https://example.test" },
+      },
+    })).rejects.toMatchObject({
+      status: 422,
+      code: "invalid_transition_action_template",
+    });
+  });
+
+  it("denies transition actions linked to a work issue from another company", async () => {
+    const { harness, plugin: testPlugin, store } = createHarness();
+    await testPlugin.definition.setup(harness.ctx);
+
+    const otherIssue = await harness.ctx.issues.create({
+      companyId: OTHER_COMPANY_ID,
+      title: "Other company issue",
+    });
+    const ingested = await harness.performAction<{
+      item: { id: string };
+    }>("ingest-item", {
+      companyId: COMPANY_ID,
+      queueKey: "reviews",
+      title: "Cross-company link",
+    });
+    await store.updateItem({
+      companyId: COMPANY_ID,
+      itemId: ingested.item.id,
+      linkedWorkIssueId: otherIssue.id,
+    });
+    await harness.performAction("upsert-transition-action", {
+      companyId: COMPANY_ID,
+      queueKey: "reviews",
+      actionKey: "update-work",
+      fromStateKey: "draft",
+      toStateKey: "approved",
+      action: {
+        type: "create_or_update_issue",
+        mode: "update_existing",
+        template: {
+          title: "Should not update",
+        },
+      },
+    });
+
+    await expect(harness.performAction("transition-item", {
+      companyId: COMPANY_ID,
+      itemId: ingested.item.id,
+      toStateKey: "approved",
+    })).rejects.toMatchObject({
+      status: 403,
+      code: "linked_issue_cross_company_denied",
+    });
+
+    await expect(harness.getData("queue-item", { companyId: COMPANY_ID, itemId: ingested.item.id }))
+      .resolves.toMatchObject({ stateKey: "draft" });
+    await expect(harness.ctx.issues.get(otherIssue.id, OTHER_COMPANY_ID)).resolves.toMatchObject({
+      title: "Other company issue",
+    });
+  });
 });
