@@ -429,7 +429,10 @@ function CodeBlock({
       >
         {children}
       </pre>
-      <div className="paperclip-markdown-codeblock-actions" data-active={copied || failed || undefined}>
+      <div
+        className="paperclip-markdown-codeblock-actions"
+        data-active={copied || failed || wrapped || undefined}
+      >
         <button
           type="button"
           onClick={() => setWrapped((next) => !next)}

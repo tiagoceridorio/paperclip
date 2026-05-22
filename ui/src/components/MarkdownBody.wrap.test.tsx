@@ -60,12 +60,17 @@ describe("MarkdownBody code block wrapping", () => {
     });
 
     const pre = container.querySelector("pre");
+    const actions = container.querySelector<HTMLDivElement>(
+      ".paperclip-markdown-codeblock-actions",
+    );
     const wrapButton = container.querySelector<HTMLButtonElement>(
       ".paperclip-markdown-codeblock-wrap",
     );
 
     expect(pre).not.toBeNull();
+    expect(actions).not.toBeNull();
     expect(wrapButton).not.toBeNull();
+    expect(actions?.getAttribute("data-active")).toBeNull();
     expect(wrapButton?.getAttribute("aria-pressed")).toBe("false");
     expect(wrapButton?.getAttribute("aria-label")).toBe("Wrap lines");
     expect(pre?.style.overflowX).toBe("auto");
@@ -77,6 +82,7 @@ describe("MarkdownBody code block wrapping", () => {
 
     expect(wrapButton?.getAttribute("aria-pressed")).toBe("true");
     expect(wrapButton?.getAttribute("aria-label")).toBe("Disable line wrap");
+    expect(actions?.getAttribute("data-active")).toBe("true");
     expect(pre?.style.overflowX).toBe("hidden");
     expect(pre?.style.whiteSpace).toBe("pre-wrap");
     expect(pre?.style.overflowWrap).toBe("anywhere");
@@ -87,6 +93,7 @@ describe("MarkdownBody code block wrapping", () => {
 
     expect(wrapButton?.getAttribute("aria-pressed")).toBe("false");
     expect(wrapButton?.getAttribute("aria-label")).toBe("Wrap lines");
+    expect(actions?.getAttribute("data-active")).toBeNull();
     expect(pre?.style.overflowX).toBe("auto");
     expect(pre?.style.whiteSpace).toBe("");
   });
