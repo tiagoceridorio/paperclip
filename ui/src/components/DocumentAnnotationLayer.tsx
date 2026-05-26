@@ -268,12 +268,12 @@ export function DocumentAnnotationLayer({
                 "paperclip-doc-annotation-highlight pointer-events-auto absolute cursor-pointer rounded-none transition-colors",
                 // base box treatment (replaces the previous baseline border)
                 isResolved
-                  ? "bg-yellow-300/25 outline outline-1 outline-dashed outline-offset-0 outline-yellow-700/45 hover:bg-yellow-300/35 dark:bg-yellow-300/18 dark:outline-yellow-200/45"
+                  ? "bg-yellow-100 outline outline-1 outline-dashed outline-offset-0 outline-yellow-700/45 hover:bg-yellow-200 dark:bg-yellow-700 dark:outline-yellow-200/45 dark:hover:bg-yellow-600"
                   : isStale
-                    ? "bg-yellow-300/35 outline outline-2 outline-dashed outline-offset-0 outline-yellow-700/65 hover:bg-yellow-300/45 dark:bg-yellow-300/24 dark:outline-yellow-200/70"
+                    ? "bg-yellow-200 outline outline-2 outline-dashed outline-offset-0 outline-yellow-700/65 hover:bg-yellow-300 dark:bg-yellow-600 dark:outline-yellow-200/70 dark:hover:bg-yellow-500"
                     : isFocused
-                      ? "bg-yellow-300/55 outline outline-2 outline-offset-0 outline-yellow-700/85 shadow-[0_0_0_1px_var(--color-background)] dark:bg-yellow-300/35 dark:outline-yellow-200/85"
-                      : "bg-yellow-300/40 hover:bg-yellow-300/55 dark:bg-yellow-300/24 dark:hover:bg-yellow-300/34",
+                      ? "bg-yellow-300 outline outline-2 outline-offset-0 outline-yellow-700/85 shadow-[0_0_0_1px_var(--color-background)] hover:bg-yellow-300 dark:bg-yellow-500 dark:outline-yellow-200/85 dark:hover:bg-yellow-400"
+                      : "bg-yellow-200 hover:bg-yellow-300 dark:bg-yellow-600 dark:hover:bg-yellow-500",
               )}
               style={{
                 top: rect.top,
