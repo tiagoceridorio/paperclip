@@ -244,6 +244,25 @@ describe("teams catalog routes", () => {
     );
   });
 
+  it("rejects catalog preview requests that try to include company metadata", async () => {
+    const app = await createApp({
+      type: "board",
+      userId: "local-board",
+      companyIds: [companyId],
+      source: "local_implicit",
+      isInstanceAdmin: false,
+    });
+
+    const res = await request(app)
+      .post(`/api/companies/${companyId}/teams/catalog/product-engineering/preview`)
+      .send({
+        include: { company: true, agents: true },
+      });
+
+    expect(res.status, JSON.stringify(res.body)).toBe(400);
+    expect(mockTeamsCatalogService.previewCatalogTeamImport).not.toHaveBeenCalled();
+  });
+
   it("installs catalog teams only for actors that can create agents", async () => {
     const app = await createApp({
       type: "agent",

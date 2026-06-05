@@ -4398,562 +4398,562 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
         createdImportSecretIds,
       );
 
-    if (include.company) {
-      const logoPath = sourceManifest.company?.logoPath ?? null;
-      if (!logoPath) {
-        const cleared = await companies.update(targetCompany.id, { logoAssetId: null });
-        targetCompany = cleared ?? targetCompany;
-      } else {
-        const logoFile = plan.source.files[logoPath];
-        if (!logoFile) {
-          warnings.push(`Skipped company logo import because ${logoPath} is missing from the package.`);
-        } else if (!storage) {
-          warnings.push("Skipped company logo import because storage is unavailable.");
+      if (include.company) {
+        const logoPath = sourceManifest.company?.logoPath ?? null;
+        if (!logoPath) {
+          const cleared = await companies.update(targetCompany.id, { logoAssetId: null });
+          targetCompany = cleared ?? targetCompany;
         } else {
-          const contentType = isPortableBinaryFile(logoFile)
-            ? (logoFile.contentType ?? inferContentTypeFromPath(logoPath))
-            : inferContentTypeFromPath(logoPath);
-          if (!contentType || !COMPANY_LOGO_CONTENT_TYPE_EXTENSIONS[contentType]) {
-            warnings.push(`Skipped company logo import for ${logoPath} because the file type is unsupported.`);
+          const logoFile = plan.source.files[logoPath];
+          if (!logoFile) {
+            warnings.push(`Skipped company logo import because ${logoPath} is missing from the package.`);
+          } else if (!storage) {
+            warnings.push("Skipped company logo import because storage is unavailable.");
           } else {
-            try {
-              const body = portableFileToBuffer(logoFile, logoPath);
-              const stored = await storage.putFile({
-                companyId: targetCompany.id,
-                namespace: "assets/companies",
-                originalFilename: path.posix.basename(logoPath),
-                contentType,
-                body,
-              });
-              const createdAsset = await assetRecords.create(targetCompany.id, {
-                provider: stored.provider,
-                objectKey: stored.objectKey,
-                contentType: stored.contentType,
-                byteSize: stored.byteSize,
-                sha256: stored.sha256,
-                originalFilename: stored.originalFilename,
-                createdByAgentId: null,
-                createdByUserId: actorUserId ?? null,
-              });
-              const updated = await companies.update(targetCompany.id, {
-                logoAssetId: createdAsset.id,
-              });
-              targetCompany = updated ?? targetCompany;
-            } catch (err) {
-              warnings.push(`Failed to import company logo ${logoPath}: ${err instanceof Error ? err.message : String(err)}`);
+            const contentType = isPortableBinaryFile(logoFile)
+              ? (logoFile.contentType ?? inferContentTypeFromPath(logoPath))
+              : inferContentTypeFromPath(logoPath);
+            if (!contentType || !COMPANY_LOGO_CONTENT_TYPE_EXTENSIONS[contentType]) {
+              warnings.push(`Skipped company logo import for ${logoPath} because the file type is unsupported.`);
+            } else {
+              try {
+                const body = portableFileToBuffer(logoFile, logoPath);
+                const stored = await storage.putFile({
+                  companyId: targetCompany.id,
+                  namespace: "assets/companies",
+                  originalFilename: path.posix.basename(logoPath),
+                  contentType,
+                  body,
+                });
+                const createdAsset = await assetRecords.create(targetCompany.id, {
+                  provider: stored.provider,
+                  objectKey: stored.objectKey,
+                  contentType: stored.contentType,
+                  byteSize: stored.byteSize,
+                  sha256: stored.sha256,
+                  originalFilename: stored.originalFilename,
+                  createdByAgentId: null,
+                  createdByUserId: actorUserId ?? null,
+                });
+                const updated = await companies.update(targetCompany.id, {
+                  logoAssetId: createdAsset.id,
+                });
+                targetCompany = updated ?? targetCompany;
+              } catch (err) {
+                warnings.push(`Failed to import company logo ${logoPath}: ${err instanceof Error ? err.message : String(err)}`);
+              }
             }
           }
         }
       }
-    }
 
-    const resultAgents: CompanyPortabilityImportResult["agents"] = [];
-    const resultProjects: CompanyPortabilityImportResult["projects"] = [];
-    const importedSlugToAgentId = new Map<string, string>();
-    const existingSlugToAgentId = new Map<string, string>();
-    const preImportExistingSlugToAgentId = new Map<string, string>();
-    const preImportExistingAgentIds = new Set<string>();
-    const agentStatusById = new Map<string, string | null | undefined>();
-    const existingAgents = await agents.list(targetCompany.id);
-    for (const existing of existingAgents) {
-      const slug = normalizeAgentUrlKey(existing.name) ?? existing.id;
-      existingSlugToAgentId.set(slug, existing.id);
-      preImportExistingSlugToAgentId.set(slug, existing.id);
-      preImportExistingAgentIds.add(existing.id);
-      agentStatusById.set(existing.id, existing.status);
-    }
-    const importedSlugToProjectId = new Map<string, string>();
-    const importedProjectWorkspaceIdByProjectSlug = new Map<string, Map<string, string>>();
-    const existingProjectSlugToId = new Map<string, string>();
-    const existingProjects = await projects.list(targetCompany.id);
-    for (const existing of existingProjects) {
-      existingProjectSlugToId.set(existing.urlKey, existing.id);
-    }
-
-    const importedSkills = include.skills || include.agents
-      ? await companySkills.importPackageFiles(targetCompany.id, pickTextFiles(plan.source.files), {
-          onConflict: resolveSkillConflictStrategy(mode, plan.collisionStrategy),
-        })
-      : [];
-    const desiredSkillRefMap = new Map<string, string>();
-    for (const importedSkill of importedSkills) {
-      desiredSkillRefMap.set(importedSkill.originalKey, importedSkill.skill.key);
-      desiredSkillRefMap.set(importedSkill.originalSlug, importedSkill.skill.key);
-      if (importedSkill.action === "skipped") {
-        warnings.push(`Skipped skill ${importedSkill.originalSlug}; existing skill ${importedSkill.skill.slug} was kept.`);
-      } else if (importedSkill.originalKey !== importedSkill.skill.key) {
-        warnings.push(`Imported skill ${importedSkill.originalSlug} as ${importedSkill.skill.slug} to avoid overwriting an existing skill.`);
+      const resultAgents: CompanyPortabilityImportResult["agents"] = [];
+      const resultProjects: CompanyPortabilityImportResult["projects"] = [];
+      const importedSlugToAgentId = new Map<string, string>();
+      const existingSlugToAgentId = new Map<string, string>();
+      const preImportExistingSlugToAgentId = new Map<string, string>();
+      const preImportExistingAgentIds = new Set<string>();
+      const agentStatusById = new Map<string, string | null | undefined>();
+      const existingAgents = await agents.list(targetCompany.id);
+      for (const existing of existingAgents) {
+        const slug = normalizeAgentUrlKey(existing.name) ?? existing.id;
+        existingSlugToAgentId.set(slug, existing.id);
+        preImportExistingSlugToAgentId.set(slug, existing.id);
+        preImportExistingAgentIds.add(existing.id);
+        agentStatusById.set(existing.id, existing.status);
       }
-    }
+      const importedSlugToProjectId = new Map<string, string>();
+      const importedProjectWorkspaceIdByProjectSlug = new Map<string, Map<string, string>>();
+      const existingProjectSlugToId = new Map<string, string>();
+      const existingProjects = await projects.list(targetCompany.id);
+      for (const existing of existingProjects) {
+        existingProjectSlugToId.set(existing.urlKey, existing.id);
+      }
 
-    if (include.agents) {
-      for (const planAgent of plan.preview.plan.agentPlans) {
-        const manifestAgent = plan.selectedAgents.find((agent) => agent.slug === planAgent.slug);
-        if (!manifestAgent) continue;
-        if (planAgent.action === "skip") {
-          resultAgents.push({
-            slug: planAgent.slug,
-            id: planAgent.existingAgentId,
-            action: "skipped",
-            name: planAgent.plannedName,
-            reason: planAgent.reason,
-          });
-          continue;
+      const importedSkills = include.skills || include.agents
+        ? await companySkills.importPackageFiles(targetCompany.id, pickTextFiles(plan.source.files), {
+            onConflict: resolveSkillConflictStrategy(mode, plan.collisionStrategy),
+          })
+        : [];
+      const desiredSkillRefMap = new Map<string, string>();
+      for (const importedSkill of importedSkills) {
+        desiredSkillRefMap.set(importedSkill.originalKey, importedSkill.skill.key);
+        desiredSkillRefMap.set(importedSkill.originalSlug, importedSkill.skill.key);
+        if (importedSkill.action === "skipped") {
+          warnings.push(`Skipped skill ${importedSkill.originalSlug}; existing skill ${importedSkill.skill.slug} was kept.`);
+        } else if (importedSkill.originalKey !== importedSkill.skill.key) {
+          warnings.push(`Imported skill ${importedSkill.originalSlug} as ${importedSkill.skill.slug} to avoid overwriting an existing skill.`);
         }
+      }
 
-        const bundlePrefix = `agents/${manifestAgent.slug}/`;
-        const bundleFiles = Object.fromEntries(
-          Object.entries(plan.source.files)
-            .filter(([filePath]) => filePath.startsWith(bundlePrefix))
-            .flatMap(([filePath, content]) => typeof content === "string"
-              ? [[normalizePortablePath(filePath.slice(bundlePrefix.length)), content] as const]
-              : []),
-        );
-        const markdownRaw = bundleFiles["AGENTS.md"] ?? readPortableTextFile(plan.source.files, manifestAgent.path);
-        const entryRelativePath = normalizePortablePath(manifestAgent.path).startsWith(bundlePrefix)
-          ? normalizePortablePath(manifestAgent.path).slice(bundlePrefix.length)
-          : "AGENTS.md";
-        if (typeof markdownRaw === "string") {
-          const importedInstructionsBody = parseFrontmatterMarkdown(markdownRaw).body;
-          bundleFiles[entryRelativePath] = importedInstructionsBody;
-          if (entryRelativePath !== "AGENTS.md") {
-            bundleFiles["AGENTS.md"] = importedInstructionsBody;
-          }
-        }
-        const fallbackPromptTemplate = asString((manifestAgent.adapterConfig as Record<string, unknown>).promptTemplate) || "";
-        if (!markdownRaw && fallbackPromptTemplate) {
-          bundleFiles["AGENTS.md"] = fallbackPromptTemplate;
-        }
-        if (!markdownRaw && !fallbackPromptTemplate) {
-          warnings.push(`Missing AGENTS markdown for ${manifestAgent.slug}; imported with an empty managed bundle.`);
-        }
-
-        // Apply adapter overrides from request if present
-        const adapterOverride = input.adapterOverrides?.[planAgent.slug];
-        const baseAdapterConfig = adapterOverride?.adapterConfig
-          ? { ...adapterOverride.adapterConfig }
-          : { ...manifestAgent.adapterConfig } as Record<string, unknown>;
-
-        const desiredSkills = (manifestAgent.skills ?? []).map((skillRef) => desiredSkillRefMap.get(skillRef) ?? skillRef);
-        const normalizedAdapter = await prepareImportedAgentAdapter(
-          targetCompany.id,
-          adapterOverride?.adapterType ?? manifestAgent.adapterType,
-          baseAdapterConfig,
-          desiredSkills,
-          mode,
-        );
-        const patch = {
-          name: planAgent.plannedName,
-          role: manifestAgent.role,
-          title: manifestAgent.title,
-          icon: manifestAgent.icon,
-          capabilities: manifestAgent.capabilities,
-          reportsTo: null,
-          adapterType: normalizedAdapter.adapterType,
-          adapterConfig: normalizedAdapter.adapterConfig,
-          runtimeConfig: disableImportedTimerHeartbeat(manifestAgent.runtimeConfig),
-          budgetMonthlyCents: manifestAgent.budgetMonthlyCents,
-          permissions: manifestAgent.permissions,
-          metadata: manifestAgent.metadata,
-        };
-
-        if (planAgent.action === "update" && planAgent.existingAgentId) {
-          let updated = await agents.update(planAgent.existingAgentId, patch);
-          if (!updated) {
-            warnings.push(`Skipped update for missing agent ${planAgent.existingAgentId}.`);
+      if (include.agents) {
+        for (const planAgent of plan.preview.plan.agentPlans) {
+          const manifestAgent = plan.selectedAgents.find((agent) => agent.slug === planAgent.slug);
+          if (!manifestAgent) continue;
+          if (planAgent.action === "skip") {
             resultAgents.push({
               slug: planAgent.slug,
-              id: null,
+              id: planAgent.existingAgentId,
               action: "skipped",
               name: planAgent.plannedName,
-              reason: "Existing target agent not found.",
+              reason: planAgent.reason,
             });
             continue;
           }
+
+          const bundlePrefix = `agents/${manifestAgent.slug}/`;
+          const bundleFiles = Object.fromEntries(
+            Object.entries(plan.source.files)
+              .filter(([filePath]) => filePath.startsWith(bundlePrefix))
+              .flatMap(([filePath, content]) => typeof content === "string"
+                ? [[normalizePortablePath(filePath.slice(bundlePrefix.length)), content] as const]
+                : []),
+          );
+          const markdownRaw = bundleFiles["AGENTS.md"] ?? readPortableTextFile(plan.source.files, manifestAgent.path);
+          const entryRelativePath = normalizePortablePath(manifestAgent.path).startsWith(bundlePrefix)
+            ? normalizePortablePath(manifestAgent.path).slice(bundlePrefix.length)
+            : "AGENTS.md";
+          if (typeof markdownRaw === "string") {
+            const importedInstructionsBody = parseFrontmatterMarkdown(markdownRaw).body;
+            bundleFiles[entryRelativePath] = importedInstructionsBody;
+            if (entryRelativePath !== "AGENTS.md") {
+              bundleFiles["AGENTS.md"] = importedInstructionsBody;
+            }
+          }
+          const fallbackPromptTemplate = asString((manifestAgent.adapterConfig as Record<string, unknown>).promptTemplate) || "";
+          if (!markdownRaw && fallbackPromptTemplate) {
+            bundleFiles["AGENTS.md"] = fallbackPromptTemplate;
+          }
+          if (!markdownRaw && !fallbackPromptTemplate) {
+            warnings.push(`Missing AGENTS markdown for ${manifestAgent.slug}; imported with an empty managed bundle.`);
+          }
+
+          // Apply adapter overrides from request if present
+          const adapterOverride = input.adapterOverrides?.[planAgent.slug];
+          const baseAdapterConfig = adapterOverride?.adapterConfig
+            ? { ...adapterOverride.adapterConfig }
+            : { ...manifestAgent.adapterConfig } as Record<string, unknown>;
+
+          const desiredSkills = (manifestAgent.skills ?? []).map((skillRef) => desiredSkillRefMap.get(skillRef) ?? skillRef);
+          const normalizedAdapter = await prepareImportedAgentAdapter(
+            targetCompany.id,
+            adapterOverride?.adapterType ?? manifestAgent.adapterType,
+            baseAdapterConfig,
+            desiredSkills,
+            mode,
+          );
+          const patch = {
+            name: planAgent.plannedName,
+            role: manifestAgent.role,
+            title: manifestAgent.title,
+            icon: manifestAgent.icon,
+            capabilities: manifestAgent.capabilities,
+            reportsTo: null,
+            adapterType: normalizedAdapter.adapterType,
+            adapterConfig: normalizedAdapter.adapterConfig,
+            runtimeConfig: disableImportedTimerHeartbeat(manifestAgent.runtimeConfig),
+            budgetMonthlyCents: manifestAgent.budgetMonthlyCents,
+            permissions: manifestAgent.permissions,
+            metadata: manifestAgent.metadata,
+          };
+
+          if (planAgent.action === "update" && planAgent.existingAgentId) {
+            let updated = await agents.update(planAgent.existingAgentId, patch);
+            if (!updated) {
+              warnings.push(`Skipped update for missing agent ${planAgent.existingAgentId}.`);
+              resultAgents.push({
+                slug: planAgent.slug,
+                id: null,
+                action: "skipped",
+                name: planAgent.plannedName,
+                reason: "Existing target agent not found.",
+              });
+              continue;
+            }
+            try {
+              const materialized = await instructions.materializeManagedBundle(updated, bundleFiles, {
+                clearLegacyPromptTemplate: true,
+                replaceExisting: true,
+              });
+              updated = await agents.update(updated.id, { adapterConfig: materialized.adapterConfig }) ?? updated;
+            } catch (err) {
+              warnings.push(`Failed to materialize instructions bundle for ${manifestAgent.slug}: ${err instanceof Error ? err.message : String(err)}`);
+            }
+            agentStatusById.set(updated.id, updated.status ?? agentStatusById.get(updated.id) ?? null);
+            await secrets.syncEnvBindingsForTarget?.(
+              targetCompany.id,
+              { targetType: "agent", targetId: updated.id },
+              isPlainRecord(updated.adapterConfig) ? updated.adapterConfig.env : undefined,
+            );
+            importedSlugToAgentId.set(planAgent.slug, updated.id);
+            existingSlugToAgentId.set(normalizeAgentUrlKey(updated.name) ?? updated.id, updated.id);
+            resultAgents.push({
+              slug: planAgent.slug,
+              id: updated.id,
+              action: "updated",
+              name: updated.name,
+              reason: planAgent.reason,
+            });
+            continue;
+          }
+
+          const createdStatus = "idle";
+          let created = await agents.create(targetCompany.id, {
+            ...patch,
+            status: createdStatus,
+          });
+          await access.ensureMembership(targetCompany.id, "agent", created.id, "member", "active");
+          await access.setPrincipalPermission(
+            targetCompany.id,
+            "agent",
+            created.id,
+            "tasks:assign",
+            true,
+            actorUserId ?? null,
+          );
           try {
-            const materialized = await instructions.materializeManagedBundle(updated, bundleFiles, {
+            const materialized = await instructions.materializeManagedBundle(created, bundleFiles, {
               clearLegacyPromptTemplate: true,
               replaceExisting: true,
             });
-            updated = await agents.update(updated.id, { adapterConfig: materialized.adapterConfig }) ?? updated;
+            created = await agents.update(created.id, { adapterConfig: materialized.adapterConfig }) ?? created;
           } catch (err) {
             warnings.push(`Failed to materialize instructions bundle for ${manifestAgent.slug}: ${err instanceof Error ? err.message : String(err)}`);
           }
-          agentStatusById.set(updated.id, updated.status ?? agentStatusById.get(updated.id) ?? null);
+          agentStatusById.set(created.id, created.status ?? createdStatus);
           await secrets.syncEnvBindingsForTarget?.(
             targetCompany.id,
-            { targetType: "agent", targetId: updated.id },
-            isPlainRecord(updated.adapterConfig) ? updated.adapterConfig.env : undefined,
+            { targetType: "agent", targetId: created.id },
+            isPlainRecord(created.adapterConfig) ? created.adapterConfig.env : undefined,
           );
-          importedSlugToAgentId.set(planAgent.slug, updated.id);
-          existingSlugToAgentId.set(normalizeAgentUrlKey(updated.name) ?? updated.id, updated.id);
+          importedSlugToAgentId.set(planAgent.slug, created.id);
+          existingSlugToAgentId.set(normalizeAgentUrlKey(created.name) ?? created.id, created.id);
           resultAgents.push({
             slug: planAgent.slug,
-            id: updated.id,
-            action: "updated",
-            name: updated.name,
-            reason: planAgent.reason,
-          });
-          continue;
-        }
-
-        const createdStatus = "idle";
-        let created = await agents.create(targetCompany.id, {
-          ...patch,
-          status: createdStatus,
-        });
-        await access.ensureMembership(targetCompany.id, "agent", created.id, "member", "active");
-        await access.setPrincipalPermission(
-          targetCompany.id,
-          "agent",
-          created.id,
-          "tasks:assign",
-          true,
-          actorUserId ?? null,
-        );
-        try {
-          const materialized = await instructions.materializeManagedBundle(created, bundleFiles, {
-            clearLegacyPromptTemplate: true,
-            replaceExisting: true,
-          });
-          created = await agents.update(created.id, { adapterConfig: materialized.adapterConfig }) ?? created;
-        } catch (err) {
-          warnings.push(`Failed to materialize instructions bundle for ${manifestAgent.slug}: ${err instanceof Error ? err.message : String(err)}`);
-        }
-        agentStatusById.set(created.id, created.status ?? createdStatus);
-        await secrets.syncEnvBindingsForTarget?.(
-          targetCompany.id,
-          { targetType: "agent", targetId: created.id },
-          isPlainRecord(created.adapterConfig) ? created.adapterConfig.env : undefined,
-        );
-        importedSlugToAgentId.set(planAgent.slug, created.id);
-        existingSlugToAgentId.set(normalizeAgentUrlKey(created.name) ?? created.id, created.id);
-        resultAgents.push({
-          slug: planAgent.slug,
-          id: created.id,
-          action: "created",
-          name: created.name,
-          reason: planAgent.reason,
-        });
-      }
-
-      // Apply reporting links once all imported agent ids are available.
-      for (const manifestAgent of plan.selectedAgents) {
-        const agentId = importedSlugToAgentId.get(manifestAgent.slug);
-        if (!agentId) continue;
-        const managerSlug = manifestAgent.reportsToSlug;
-        let existingManagerId: string | null = null;
-        if (
-          manifestAgent.reportsToExistingAgentId
-          && preImportExistingAgentIds.has(manifestAgent.reportsToExistingAgentId)
-        ) {
-          existingManagerId = manifestAgent.reportsToExistingAgentId;
-        } else if (manifestAgent.reportsToExistingAgentSlug) {
-          existingManagerId =
-            preImportExistingSlugToAgentId.get(manifestAgent.reportsToExistingAgentSlug) ?? null;
-        }
-        if (!managerSlug && !existingManagerId) continue;
-        const managerId =
-          existingManagerId
-          ?? (managerSlug
-            ? importedSlugToAgentId.get(managerSlug) ?? existingSlugToAgentId.get(managerSlug) ?? null
-            : null);
-        if (!managerId || managerId === agentId) continue;
-        try {
-          await agents.update(agentId, { reportsTo: managerId });
-        } catch {
-          const managerRef =
-            managerSlug
-            ?? manifestAgent.reportsToExistingAgentSlug
-            ?? manifestAgent.reportsToExistingAgentId;
-          warnings.push(`Could not assign manager ${managerRef} for imported agent ${manifestAgent.slug}.`);
-        }
-      }
-    }
-
-    if (include.projects) {
-      for (const planProject of plan.preview.plan.projectPlans) {
-        const manifestProject = sourceManifest.projects.find((project) => project.slug === planProject.slug);
-        if (!manifestProject) continue;
-        if (planProject.action === "skip") {
-          resultProjects.push({
-            slug: planProject.slug,
-            id: planProject.existingProjectId,
-            action: "skipped",
-            name: planProject.plannedName,
-            reason: planProject.reason,
-          });
-          continue;
-        }
-
-        const projectLeadAgentId = manifestProject.leadAgentSlug
-          ? importedSlugToAgentId.get(manifestProject.leadAgentSlug)
-            ?? existingSlugToAgentId.get(manifestProject.leadAgentSlug)
-            ?? null
-          : null;
-        const projectWorkspaceIdByKey = new Map<string, string>();
-        const normalizedProjectEnv = manifestProject.env
-          ? await secrets.normalizeEnvBindingsForPersistence(
-              targetCompany.id,
-              manifestProject.env,
-              {
-                strictMode: strictSecretsMode,
-                fieldPath: `projects.${manifestProject.slug}.env`,
-              },
-            )
-          : null;
-        const projectPatch = {
-          name: planProject.plannedName,
-          description: manifestProject.description,
-          leadAgentId: projectLeadAgentId,
-          targetDate: manifestProject.targetDate,
-          color: manifestProject.color,
-          status: manifestProject.status && PROJECT_STATUSES.includes(manifestProject.status as any)
-            ? manifestProject.status as typeof PROJECT_STATUSES[number]
-            : "backlog",
-          env: normalizedProjectEnv,
-          executionWorkspacePolicy: stripPortableProjectExecutionWorkspaceRefs(manifestProject.executionWorkspacePolicy),
-        };
-
-        let projectId: string | null = null;
-        if (planProject.action === "update" && planProject.existingProjectId) {
-          const updated = await projects.update(planProject.existingProjectId, projectPatch);
-          if (!updated) {
-            warnings.push(`Skipped update for missing project ${planProject.existingProjectId}.`);
-            resultProjects.push({
-              slug: planProject.slug,
-              id: null,
-              action: "skipped",
-              name: planProject.plannedName,
-              reason: "Existing target project not found.",
-            });
-            continue;
-          }
-          projectId = updated.id;
-          importedSlugToProjectId.set(planProject.slug, updated.id);
-          existingProjectSlugToId.set(updated.urlKey, updated.id);
-          resultProjects.push({
-            slug: planProject.slug,
-            id: updated.id,
-            action: "updated",
-            name: updated.name,
-            reason: planProject.reason,
-          });
-        } else {
-          const created = await projects.create(targetCompany.id, projectPatch);
-          projectId = created.id;
-          importedSlugToProjectId.set(planProject.slug, created.id);
-          existingProjectSlugToId.set(created.urlKey, created.id);
-          resultProjects.push({
-            slug: planProject.slug,
             id: created.id,
             action: "created",
             name: created.name,
-            reason: planProject.reason,
+            reason: planAgent.reason,
           });
         }
 
-        if (!projectId) continue;
-
-        await secrets.syncEnvBindingsForTarget?.(
-          targetCompany.id,
-          { targetType: "project", targetId: projectId },
-          normalizedProjectEnv ?? {},
-        );
-
-        for (const workspace of manifestProject.workspaces) {
-          const createdWorkspace = await projects.createWorkspace(projectId, {
-            name: workspace.name,
-            sourceType: workspace.sourceType ?? undefined,
-            repoUrl: workspace.repoUrl ?? undefined,
-            repoRef: workspace.repoRef ?? undefined,
-            defaultRef: workspace.defaultRef ?? undefined,
-            visibility: workspace.visibility ?? undefined,
-            setupCommand: workspace.setupCommand ?? undefined,
-            cleanupCommand: workspace.cleanupCommand ?? undefined,
-            metadata: workspace.metadata ?? undefined,
-            isPrimary: workspace.isPrimary,
-          });
-          if (!createdWorkspace) {
-            warnings.push(`Project ${planProject.slug} workspace ${workspace.key} could not be created during import.`);
-            continue;
+        // Apply reporting links once all imported agent ids are available.
+        for (const manifestAgent of plan.selectedAgents) {
+          const agentId = importedSlugToAgentId.get(manifestAgent.slug);
+          if (!agentId) continue;
+          const managerSlug = manifestAgent.reportsToSlug;
+          let existingManagerId: string | null = null;
+          if (
+            manifestAgent.reportsToExistingAgentId
+            && preImportExistingAgentIds.has(manifestAgent.reportsToExistingAgentId)
+          ) {
+            existingManagerId = manifestAgent.reportsToExistingAgentId;
+          } else if (manifestAgent.reportsToExistingAgentSlug) {
+            existingManagerId =
+              preImportExistingSlugToAgentId.get(manifestAgent.reportsToExistingAgentSlug) ?? null;
           }
-          projectWorkspaceIdByKey.set(workspace.key, createdWorkspace.id);
-        }
-        importedProjectWorkspaceIdByProjectSlug.set(planProject.slug, projectWorkspaceIdByKey);
-
-        const hydratedProjectExecutionWorkspacePolicy = importPortableProjectExecutionWorkspacePolicy(
-          planProject.slug,
-          manifestProject.executionWorkspacePolicy,
-          projectWorkspaceIdByKey,
-          warnings,
-        );
-        if (hydratedProjectExecutionWorkspacePolicy) {
-          await projects.update(projectId, {
-            executionWorkspacePolicy: hydratedProjectExecutionWorkspacePolicy,
-          });
+          if (!managerSlug && !existingManagerId) continue;
+          const managerId =
+            existingManagerId
+            ?? (managerSlug
+              ? importedSlugToAgentId.get(managerSlug) ?? existingSlugToAgentId.get(managerSlug) ?? null
+              : null);
+          if (!managerId || managerId === agentId) continue;
+          try {
+            await agents.update(agentId, { reportsTo: managerId });
+          } catch {
+            const managerRef =
+              managerSlug
+              ?? manifestAgent.reportsToExistingAgentSlug
+              ?? manifestAgent.reportsToExistingAgentId;
+            warnings.push(`Could not assign manager ${managerRef} for imported agent ${manifestAgent.slug}.`);
+          }
         }
       }
-    }
 
-    if (include.issues) {
-      const routines = routineService(db);
-      for (const manifestIssue of sourceManifest.issues) {
-        const markdownRaw = readPortableTextFile(plan.source.files, manifestIssue.path);
-        const parsed = markdownRaw ? parseFrontmatterMarkdown(markdownRaw) : null;
-        const description = parsed?.body || manifestIssue.description || null;
-        const assigneeAgentId = resolveImportedAssigneeAgentId(
-          manifestIssue.assigneeAgentSlug,
-          importedSlugToAgentId,
-          existingSlugToAgentId,
-          agentStatusById,
-          warnings,
-          `Task ${manifestIssue.slug}`,
-        );
-        const projectId = manifestIssue.projectSlug
-          ? importedSlugToProjectId.get(manifestIssue.projectSlug)
-            ?? existingProjectSlugToId.get(manifestIssue.projectSlug)
-            ?? null
-          : null;
-        const projectWorkspaceId = manifestIssue.projectSlug && manifestIssue.projectWorkspaceKey
-          ? importedProjectWorkspaceIdByProjectSlug.get(manifestIssue.projectSlug)?.get(manifestIssue.projectWorkspaceKey) ?? null
-          : null;
-        if (manifestIssue.projectWorkspaceKey && !projectWorkspaceId) {
-          warnings.push(`Task ${manifestIssue.slug} references workspace key ${manifestIssue.projectWorkspaceKey}, but that workspace was not imported.`);
-        }
-        if (manifestIssue.recurring) {
-          if (!projectId) {
-            throw unprocessable(`Recurring task ${manifestIssue.slug} is missing the project required to create a routine.`);
+      if (include.projects) {
+        for (const planProject of plan.preview.plan.projectPlans) {
+          const manifestProject = sourceManifest.projects.find((project) => project.slug === planProject.slug);
+          if (!manifestProject) continue;
+          if (planProject.action === "skip") {
+            resultProjects.push({
+              slug: planProject.slug,
+              id: planProject.existingProjectId,
+              action: "skipped",
+              name: planProject.plannedName,
+              reason: planProject.reason,
+            });
+            continue;
           }
-          const resolvedRoutine = resolvePortableRoutineDefinition(manifestIssue, parsed?.frontmatter.schedule);
-          if (resolvedRoutine.errors.length > 0) {
-            throw unprocessable(`Recurring task ${manifestIssue.slug} could not be imported as a routine: ${resolvedRoutine.errors.join("; ")}`);
-          }
-          warnings.push(...resolvedRoutine.warnings);
-          const routineDefinition = resolvedRoutine.routine ?? {
-            concurrencyPolicy: null,
-            catchUpPolicy: null,
-            variables: null,
-            triggers: [],
+
+          const projectLeadAgentId = manifestProject.leadAgentSlug
+            ? importedSlugToAgentId.get(manifestProject.leadAgentSlug)
+              ?? existingSlugToAgentId.get(manifestProject.leadAgentSlug)
+              ?? null
+            : null;
+          const projectWorkspaceIdByKey = new Map<string, string>();
+          const normalizedProjectEnv = manifestProject.env
+            ? await secrets.normalizeEnvBindingsForPersistence(
+                targetCompany.id,
+                manifestProject.env,
+                {
+                  strictMode: strictSecretsMode,
+                  fieldPath: `projects.${manifestProject.slug}.env`,
+                },
+              )
+            : null;
+          const projectPatch = {
+            name: planProject.plannedName,
+            description: manifestProject.description,
+            leadAgentId: projectLeadAgentId,
+            targetDate: manifestProject.targetDate,
+            color: manifestProject.color,
+            status: manifestProject.status && PROJECT_STATUSES.includes(manifestProject.status as any)
+              ? manifestProject.status as typeof PROJECT_STATUSES[number]
+              : "backlog",
+            env: normalizedProjectEnv,
+            executionWorkspacePolicy: stripPortableProjectExecutionWorkspaceRefs(manifestProject.executionWorkspacePolicy),
           };
-          const createdRoutine = await routines.create(targetCompany.id, {
-            projectId,
-            goalId: null,
-            parentIssueId: null,
-            title: manifestIssue.title,
-            description,
-            assigneeAgentId,
-            priority: manifestIssue.priority && ISSUE_PRIORITIES.includes(manifestIssue.priority as any)
-              ? manifestIssue.priority as typeof ISSUE_PRIORITIES[number]
-              : "medium",
-            status: manifestIssue.status && ROUTINE_STATUSES.includes(manifestIssue.status as any)
-              ? manifestIssue.status as typeof ROUTINE_STATUSES[number]
-              : "active",
-            concurrencyPolicy:
-              routineDefinition.concurrencyPolicy && ROUTINE_CONCURRENCY_POLICIES.includes(routineDefinition.concurrencyPolicy as any)
-                ? routineDefinition.concurrencyPolicy as typeof ROUTINE_CONCURRENCY_POLICIES[number]
-                : "coalesce_if_active",
-            catchUpPolicy:
-              routineDefinition.catchUpPolicy && ROUTINE_CATCH_UP_POLICIES.includes(routineDefinition.catchUpPolicy as any)
-                ? routineDefinition.catchUpPolicy as typeof ROUTINE_CATCH_UP_POLICIES[number]
-                : "skip_missed",
-            variables: routineDefinition.variables ?? [],
-          }, {
-            agentId: null,
-            userId: actorUserId ?? null,
-          });
-          for (const trigger of routineDefinition.triggers) {
-            if (trigger.kind === "schedule") {
-              await routines.createTrigger(createdRoutine.id, {
-                kind: "schedule",
-                label: trigger.label,
-                enabled: trigger.enabled,
-                cronExpression: trigger.cronExpression!,
-                timezone: trigger.timezone!,
-              }, {
-                agentId: null,
-                userId: actorUserId ?? null,
+
+          let projectId: string | null = null;
+          if (planProject.action === "update" && planProject.existingProjectId) {
+            const updated = await projects.update(planProject.existingProjectId, projectPatch);
+            if (!updated) {
+              warnings.push(`Skipped update for missing project ${planProject.existingProjectId}.`);
+              resultProjects.push({
+                slug: planProject.slug,
+                id: null,
+                action: "skipped",
+                name: planProject.plannedName,
+                reason: "Existing target project not found.",
               });
               continue;
             }
-            if (trigger.kind === "webhook") {
-              await routines.createTrigger(createdRoutine.id, {
-                kind: "webhook",
-                label: trigger.label,
-                enabled: trigger.enabled,
-                signingMode:
-                  trigger.signingMode && ROUTINE_TRIGGER_SIGNING_MODES.includes(trigger.signingMode as any)
-                    ? trigger.signingMode as typeof ROUTINE_TRIGGER_SIGNING_MODES[number]
-                    : "bearer",
-                replayWindowSec: trigger.replayWindowSec ?? 300,
-              }, {
-                agentId: null,
-                userId: actorUserId ?? null,
-              });
+            projectId = updated.id;
+            importedSlugToProjectId.set(planProject.slug, updated.id);
+            existingProjectSlugToId.set(updated.urlKey, updated.id);
+            resultProjects.push({
+              slug: planProject.slug,
+              id: updated.id,
+              action: "updated",
+              name: updated.name,
+              reason: planProject.reason,
+            });
+          } else {
+            const created = await projects.create(targetCompany.id, projectPatch);
+            projectId = created.id;
+            importedSlugToProjectId.set(planProject.slug, created.id);
+            existingProjectSlugToId.set(created.urlKey, created.id);
+            resultProjects.push({
+              slug: planProject.slug,
+              id: created.id,
+              action: "created",
+              name: created.name,
+              reason: planProject.reason,
+            });
+          }
+
+          if (!projectId) continue;
+
+          await secrets.syncEnvBindingsForTarget?.(
+            targetCompany.id,
+            { targetType: "project", targetId: projectId },
+            normalizedProjectEnv ?? {},
+          );
+
+          for (const workspace of manifestProject.workspaces) {
+            const createdWorkspace = await projects.createWorkspace(projectId, {
+              name: workspace.name,
+              sourceType: workspace.sourceType ?? undefined,
+              repoUrl: workspace.repoUrl ?? undefined,
+              repoRef: workspace.repoRef ?? undefined,
+              defaultRef: workspace.defaultRef ?? undefined,
+              visibility: workspace.visibility ?? undefined,
+              setupCommand: workspace.setupCommand ?? undefined,
+              cleanupCommand: workspace.cleanupCommand ?? undefined,
+              metadata: workspace.metadata ?? undefined,
+              isPrimary: workspace.isPrimary,
+            });
+            if (!createdWorkspace) {
+              warnings.push(`Project ${planProject.slug} workspace ${workspace.key} could not be created during import.`);
               continue;
             }
-            await routines.createTrigger(createdRoutine.id, {
-              kind: "api",
-              label: trigger.label,
-              enabled: trigger.enabled,
+            projectWorkspaceIdByKey.set(workspace.key, createdWorkspace.id);
+          }
+          importedProjectWorkspaceIdByProjectSlug.set(planProject.slug, projectWorkspaceIdByKey);
+
+          const hydratedProjectExecutionWorkspacePolicy = importPortableProjectExecutionWorkspacePolicy(
+            planProject.slug,
+            manifestProject.executionWorkspacePolicy,
+            projectWorkspaceIdByKey,
+            warnings,
+          );
+          if (hydratedProjectExecutionWorkspacePolicy) {
+            await projects.update(projectId, {
+              executionWorkspacePolicy: hydratedProjectExecutionWorkspacePolicy,
+            });
+          }
+        }
+      }
+
+      if (include.issues) {
+        const routines = routineService(db);
+        for (const manifestIssue of sourceManifest.issues) {
+          const markdownRaw = readPortableTextFile(plan.source.files, manifestIssue.path);
+          const parsed = markdownRaw ? parseFrontmatterMarkdown(markdownRaw) : null;
+          const description = parsed?.body || manifestIssue.description || null;
+          const assigneeAgentId = resolveImportedAssigneeAgentId(
+            manifestIssue.assigneeAgentSlug,
+            importedSlugToAgentId,
+            existingSlugToAgentId,
+            agentStatusById,
+            warnings,
+            `Task ${manifestIssue.slug}`,
+          );
+          const projectId = manifestIssue.projectSlug
+            ? importedSlugToProjectId.get(manifestIssue.projectSlug)
+              ?? existingProjectSlugToId.get(manifestIssue.projectSlug)
+              ?? null
+            : null;
+          const projectWorkspaceId = manifestIssue.projectSlug && manifestIssue.projectWorkspaceKey
+            ? importedProjectWorkspaceIdByProjectSlug.get(manifestIssue.projectSlug)?.get(manifestIssue.projectWorkspaceKey) ?? null
+            : null;
+          if (manifestIssue.projectWorkspaceKey && !projectWorkspaceId) {
+            warnings.push(`Task ${manifestIssue.slug} references workspace key ${manifestIssue.projectWorkspaceKey}, but that workspace was not imported.`);
+          }
+          if (manifestIssue.recurring) {
+            if (!projectId) {
+              throw unprocessable(`Recurring task ${manifestIssue.slug} is missing the project required to create a routine.`);
+            }
+            const resolvedRoutine = resolvePortableRoutineDefinition(manifestIssue, parsed?.frontmatter.schedule);
+            if (resolvedRoutine.errors.length > 0) {
+              throw unprocessable(`Recurring task ${manifestIssue.slug} could not be imported as a routine: ${resolvedRoutine.errors.join("; ")}`);
+            }
+            warnings.push(...resolvedRoutine.warnings);
+            const routineDefinition = resolvedRoutine.routine ?? {
+              concurrencyPolicy: null,
+              catchUpPolicy: null,
+              variables: null,
+              triggers: [],
+            };
+            const createdRoutine = await routines.create(targetCompany.id, {
+              projectId,
+              goalId: null,
+              parentIssueId: null,
+              title: manifestIssue.title,
+              description,
+              assigneeAgentId,
+              priority: manifestIssue.priority && ISSUE_PRIORITIES.includes(manifestIssue.priority as any)
+                ? manifestIssue.priority as typeof ISSUE_PRIORITIES[number]
+                : "medium",
+              status: manifestIssue.status && ROUTINE_STATUSES.includes(manifestIssue.status as any)
+                ? manifestIssue.status as typeof ROUTINE_STATUSES[number]
+                : "active",
+              concurrencyPolicy:
+                routineDefinition.concurrencyPolicy && ROUTINE_CONCURRENCY_POLICIES.includes(routineDefinition.concurrencyPolicy as any)
+                  ? routineDefinition.concurrencyPolicy as typeof ROUTINE_CONCURRENCY_POLICIES[number]
+                  : "coalesce_if_active",
+              catchUpPolicy:
+                routineDefinition.catchUpPolicy && ROUTINE_CATCH_UP_POLICIES.includes(routineDefinition.catchUpPolicy as any)
+                  ? routineDefinition.catchUpPolicy as typeof ROUTINE_CATCH_UP_POLICIES[number]
+                  : "skip_missed",
+              variables: routineDefinition.variables ?? [],
             }, {
               agentId: null,
               userId: actorUserId ?? null,
             });
+            for (const trigger of routineDefinition.triggers) {
+              if (trigger.kind === "schedule") {
+                await routines.createTrigger(createdRoutine.id, {
+                  kind: "schedule",
+                  label: trigger.label,
+                  enabled: trigger.enabled,
+                  cronExpression: trigger.cronExpression!,
+                  timezone: trigger.timezone!,
+                }, {
+                  agentId: null,
+                  userId: actorUserId ?? null,
+                });
+                continue;
+              }
+              if (trigger.kind === "webhook") {
+                await routines.createTrigger(createdRoutine.id, {
+                  kind: "webhook",
+                  label: trigger.label,
+                  enabled: trigger.enabled,
+                  signingMode:
+                    trigger.signingMode && ROUTINE_TRIGGER_SIGNING_MODES.includes(trigger.signingMode as any)
+                      ? trigger.signingMode as typeof ROUTINE_TRIGGER_SIGNING_MODES[number]
+                      : "bearer",
+                  replayWindowSec: trigger.replayWindowSec ?? 300,
+                }, {
+                  agentId: null,
+                  userId: actorUserId ?? null,
+                });
+                continue;
+              }
+              await routines.createTrigger(createdRoutine.id, {
+                kind: "api",
+                label: trigger.label,
+                enabled: trigger.enabled,
+              }, {
+                agentId: null,
+                userId: actorUserId ?? null,
+              });
+            }
+            continue;
           }
-          continue;
-        }
-        let issueStatus = manifestIssue.status && ISSUE_STATUSES.includes(manifestIssue.status as any)
-          ? manifestIssue.status as typeof ISSUE_STATUSES[number]
-          : "backlog";
-        if (!assigneeAgentId && issueStatus === "in_progress") {
-          warnings.push(`Task ${manifestIssue.slug} was downgraded to todo because its assignee could not be imported as assignable work.`);
-          issueStatus = "todo";
-        }
-        const createdIssue = await issues.create(targetCompany.id, {
-          projectId,
-          projectWorkspaceId,
-          title: manifestIssue.title,
-          description,
-          assigneeAgentId,
-          status: issueStatus,
-          priority: manifestIssue.priority && ISSUE_PRIORITIES.includes(manifestIssue.priority as any)
-            ? manifestIssue.priority as typeof ISSUE_PRIORITIES[number]
-            : "medium",
-          billingCode: manifestIssue.billingCode,
-          assigneeAdapterOverrides: manifestIssue.assigneeAdapterOverrides,
-          executionWorkspaceSettings: manifestIssue.executionWorkspaceSettings,
-          labelIds: manifestIssue.labelIds ?? [],
-        });
-        for (const comment of manifestIssue.comments ?? []) {
-          const authorAgentId = comment.authorType === "agent" && comment.authorAgentSlug
-            ? importedSlugToAgentId.get(comment.authorAgentSlug)
-              ?? existingSlugToAgentId.get(comment.authorAgentSlug)
-              ?? null
-            : null;
-          if (comment.authorType === "agent" && comment.authorAgentSlug && !authorAgentId) {
-            warnings.push(`Comment on task ${manifestIssue.slug} was imported as a system comment because author agent ${comment.authorAgentSlug} was not imported.`);
+          let issueStatus = manifestIssue.status && ISSUE_STATUSES.includes(manifestIssue.status as any)
+            ? manifestIssue.status as typeof ISSUE_STATUSES[number]
+            : "backlog";
+          if (!assigneeAgentId && issueStatus === "in_progress") {
+            warnings.push(`Task ${manifestIssue.slug} was downgraded to todo because its assignee could not be imported as assignable work.`);
+            issueStatus = "todo";
           }
-          if (comment.authorType === "user" && !actorUserId) {
-            warnings.push(`Comment on task ${manifestIssue.slug} was imported as a system comment because no importing user was available.`);
-          }
-          const authorType = authorAgentId
-            ? "agent"
-            : comment.authorType === "user" && actorUserId
-              ? "user"
-              : "system";
-          await issues.addComment(createdIssue.id, comment.body, {
-            agentId: authorAgentId ?? undefined,
-            userId: authorType === "user" ? actorUserId ?? undefined : undefined,
-          }, {
-            authorType,
-            presentation: comment.presentation,
-            metadata: comment.metadata,
-            createdAt: comment.createdAt,
+          const createdIssue = await issues.create(targetCompany.id, {
+            projectId,
+            projectWorkspaceId,
+            title: manifestIssue.title,
+            description,
+            assigneeAgentId,
+            status: issueStatus,
+            priority: manifestIssue.priority && ISSUE_PRIORITIES.includes(manifestIssue.priority as any)
+              ? manifestIssue.priority as typeof ISSUE_PRIORITIES[number]
+              : "medium",
+            billingCode: manifestIssue.billingCode,
+            assigneeAdapterOverrides: manifestIssue.assigneeAdapterOverrides,
+            executionWorkspaceSettings: manifestIssue.executionWorkspaceSettings,
+            labelIds: manifestIssue.labelIds ?? [],
           });
+          for (const comment of manifestIssue.comments ?? []) {
+            const authorAgentId = comment.authorType === "agent" && comment.authorAgentSlug
+              ? importedSlugToAgentId.get(comment.authorAgentSlug)
+                ?? existingSlugToAgentId.get(comment.authorAgentSlug)
+                ?? null
+              : null;
+            if (comment.authorType === "agent" && comment.authorAgentSlug && !authorAgentId) {
+              warnings.push(`Comment on task ${manifestIssue.slug} was imported as a system comment because author agent ${comment.authorAgentSlug} was not imported.`);
+            }
+            if (comment.authorType === "user" && !actorUserId) {
+              warnings.push(`Comment on task ${manifestIssue.slug} was imported as a system comment because no importing user was available.`);
+            }
+            const authorType = authorAgentId
+              ? "agent"
+              : comment.authorType === "user" && actorUserId
+                ? "user"
+                : "system";
+            await issues.addComment(createdIssue.id, comment.body, {
+              agentId: authorAgentId ?? undefined,
+              userId: authorType === "user" ? actorUserId ?? undefined : undefined,
+            }, {
+              authorType,
+              presentation: comment.presentation,
+              metadata: comment.metadata,
+              createdAt: comment.createdAt,
+            });
+          }
         }
       }
-    }
 
       return {
         company: {

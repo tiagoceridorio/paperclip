@@ -136,7 +136,7 @@ export const catalogTeamSourcePolicySchema = z.object({
 export const catalogTeamPreviewSchema = z.object({
   targetManagerAgentId: z.string().min(1).nullable().optional(),
   targetManagerSlug: z.string().min(1).nullable().optional(),
-  include: portabilityIncludeSchema.optional(),
+  include: portabilityIncludeSchema.omit({ company: true }).strict().optional(),
   agents: portabilityAgentSelectionSchema.optional(),
   collisionStrategy: portabilityCollisionStrategySchema.optional(),
   nameOverrides: z.record(z.string().min(1), z.string().min(1)).optional(),
