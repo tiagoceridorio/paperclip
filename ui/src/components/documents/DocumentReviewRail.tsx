@@ -3,7 +3,7 @@ import type {
   DocumentReviewIndex,
   DocumentSuggestionWithComments,
 } from "@paperclipai/shared";
-import { CheckCircle2, ChevronDown, ChevronRight, MessageSquarePlus } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, Lock, MessageSquarePlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +46,12 @@ function suggestionBucket(suggestion: DocumentSuggestionWithComments): ReviewFil
 export interface DocumentReviewRailProps {
   reviewIndex?: DocumentReviewIndex;
   loading?: boolean;
+  /**
+   * When the viewer can browse the document but can't read its review thread
+   * (the review-index endpoint is gated by parent-issue access), surface this
+   * message instead of a misleading "no feedback" empty state.
+   */
+  accessError?: string | null;
   /** Viewer can reply/resolve/accept/reject. */
   canReview: boolean;
   /** Viewer has edit rights (gates the Done reviewing CTA). */
@@ -105,6 +111,7 @@ export function DocumentReviewRail(props: DocumentReviewRailProps) {
 function ReviewRailBody({
   reviewIndex,
   loading,
+  accessError,
   canReview,
   canFinishReview,
   doneReviewingDisabledReason,
@@ -209,6 +216,16 @@ function ReviewRailBody({
       setOverallPending(false);
     }
   };
+
+  if (accessError) {
+    return (
+      <div className="flex h-full min-h-0 flex-col items-center justify-center p-6 text-center" data-testid="rail-access-error">
+        <Lock className="mb-3 h-6 w-6 text-muted-foreground" aria-hidden="true" />
+        <p className="text-sm font-medium text-foreground">Review thread unavailable</p>
+        <p className="mt-1 max-w-[28ch] text-xs text-muted-foreground">{accessError}</p>
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider delayDuration={200}>

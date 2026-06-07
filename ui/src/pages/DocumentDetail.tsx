@@ -167,8 +167,22 @@ export function DocumentDetail() {
     queryKey: binding ? queryKeys.documents.reviewIndex(binding.issueId, binding.key) : ["documents", "review-index", "none"],
     queryFn: () => documentReviewsApi.reviewIndex(binding!.issueId, binding!.key, { status: "all", includeComments: true }),
     enabled: !!binding,
+    retry: (count, error) => !(error instanceof ApiError && [403, 404].includes(error.status)) && count < 2,
   });
   const reviewIndex = reviewIndexQuery.data;
+
+  // The review-index endpoint is gated by the parent issue's authorization
+  // boundary, but the document itself is listable via the company-scoped library.
+  // A board user who can browse the doc but not its issue gets a 403 here; surface
+  // that explicitly instead of falling through to a misleading "no feedback" state.
+  const reviewAccessError = useMemo(() => {
+    const error = reviewIndexQuery.error;
+    if (!(error instanceof ApiError) || error.status !== 403) return null;
+    const issueIdentifier = doc?.backlinks.find((b) => b.identifier && b.targetType === "issue")?.identifier;
+    return issueIdentifier
+      ? `You don't have access to this document's review thread. Ask the owner of ${issueIdentifier} for access.`
+      : "You don't have access to this document's review thread. Ask the parent issue's owner for access.";
+  }, [reviewIndexQuery.error, doc?.backlinks]);
 
   const agentMap = useMemo(() => {
     const map = new Map<string, Pick<Agent, "id" | "name">>();
@@ -638,8 +652,10 @@ export function DocumentDetail() {
             <DocumentReviewRail
               reviewIndex={reviewIndex}
               loading={reviewIndexQuery.isLoading}
+              accessError={reviewAccessError}
               canReview={canReview}
-              canFinishReview={canEdit}
+              canFinishReview={canEdit && !reviewAccessError}
+              doneReviewingDisabledReason={reviewAccessError}
               latestRevisionId={doc.latestRevisionId}
               authorMaps={authorMaps}
               onReplyThread={replyThread}
@@ -677,8 +693,10 @@ export function DocumentDetail() {
               onOpenChange={setRailOpen}
               reviewIndex={reviewIndex}
               loading={reviewIndexQuery.isLoading}
+              accessError={reviewAccessError}
               canReview={canReview}
-              canFinishReview={canEdit}
+              canFinishReview={canEdit && !reviewAccessError}
+              doneReviewingDisabledReason={reviewAccessError}
               latestRevisionId={doc.latestRevisionId}
               authorMaps={authorMaps}
               onReplyThread={replyThread}
@@ -769,6 +787,7 @@ export function DocumentDetail() {
         open={handoffOpen}
         onOpenChange={setHandoffOpen}
         counts={reviewIndex?.counts}
+        accessError={reviewAccessError}
         issueIdentifier={doc.backlinks.find((b) => b.identifier && b.targetType === "issue")?.identifier ?? null}
         ownerName={ownerAgent?.name ?? null}
         canWakeOwner={!!doc.ownerAgentId && !!doc.latestRevisionId}

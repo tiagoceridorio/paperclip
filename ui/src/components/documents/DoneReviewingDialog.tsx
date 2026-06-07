@@ -27,6 +27,11 @@ export interface DoneReviewingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   counts?: DocumentReviewIndexCounts;
+  /**
+   * When the review index couldn't be loaded (e.g. the viewer lacks parent-issue
+   * access), surface this message instead of misleading zero stats.
+   */
+  accessError?: string | null;
   /** Linked issue identifier, used to label the "comment on issue" toggle. */
   issueIdentifier?: string | null;
   /** Owner agent display name, used to label the "wake owner" toggle. */
@@ -57,6 +62,7 @@ export function DoneReviewingDialog({
   open,
   onOpenChange,
   counts,
+  accessError,
   issueIdentifier,
   ownerName,
   canWakeOwner = true,
@@ -97,7 +103,16 @@ export function DoneReviewingDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Review summary */}
+        {/* Review summary — suppressed when the counts couldn't be loaded, since
+            zeros would falsely read as "nothing to hand off". */}
+        {accessError ? (
+          <p
+            className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+            data-testid="done-reviewing-access-error"
+          >
+            {accessError}
+          </p>
+        ) : (
         <div className="grid grid-cols-4 gap-2" data-testid="done-reviewing-summary">
           {stats.map((stat) => (
             <div
@@ -118,7 +133,8 @@ export function DoneReviewingDialog({
             </div>
           ))}
         </div>
-        {!hasUnresolved ? (
+        )}
+        {!accessError && !hasUnresolved ? (
           <p className="text-xs text-muted-foreground" data-testid="done-reviewing-clean">
             No open feedback — this is a clean handoff.
           </p>

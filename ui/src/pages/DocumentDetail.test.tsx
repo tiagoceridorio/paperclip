@@ -213,6 +213,23 @@ describe("DocumentDetail", () => {
     expect(edit?.disabled).toBe(true);
   });
 
+  it("surfaces a review-access error instead of an empty 'no feedback' state on 403", async () => {
+    mocks.documentsApi.get.mockResolvedValue(makeDoc());
+    mocks.documentReviewsApi.reviewIndex.mockRejectedValue(new ApiError("Forbidden", 403, null));
+    await renderPage();
+    await waitFor(
+      () => container.querySelector('[data-testid="rail-access-error"]') !== null,
+      "review access error",
+    );
+    // References the parent issue so the user knows whom to ask.
+    expect(container.textContent).toContain("don't have access to this document's review thread");
+    expect(container.textContent).toContain("PAP-10520");
+    // The misleading empty state and the Done-reviewing CTA must NOT render —
+    // there are no stats to hand off when the thread can't be read.
+    expect(container.querySelector('[data-testid="rail-empty"]')).toBeNull();
+    expect(container.querySelector('[data-testid="rail-done-reviewing"]')).toBeNull();
+  });
+
   it("shows a locked-by-other badge and disables Edit", async () => {
     mocks.documentsApi.get.mockResolvedValue(makeDoc({ lockedByAgentId: "agent-1", lockedAt: new Date() }));
     await renderPage();
