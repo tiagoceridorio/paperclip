@@ -48,7 +48,7 @@ function getCompanyRouteSegment(pathname: string, companyPrefix: string | undefi
 }
 
 export function Layout() {
-  const { sidebarOpen, setSidebarOpen, toggleSidebar, isMobile } = useSidebar();
+  const { sidebarOpen, setSidebarOpen, toggleSidebar, toggleCollapsed, isMobile } = useSidebar();
   const { openNewIssue, openOnboarding } = useDialogActions();
   const { togglePanelVisible } = usePanel();
   const {
@@ -178,6 +178,15 @@ export function Layout() {
   ]);
 
   const togglePanel = togglePanelVisible;
+  // Cmd/Ctrl+B: collapse/expand the pinned rail on desktop; on mobile keep
+  // toggling the off-canvas drawer.
+  const toggleCollapse = useCallback(() => {
+    if (isMobile) {
+      toggleSidebar();
+    } else {
+      toggleCollapsed();
+    }
+  }, [isMobile, toggleSidebar, toggleCollapsed]);
   const openSearch = useCallback(() => {
     document.dispatchEvent(new KeyboardEvent("keydown", {
       key: "k",
@@ -194,6 +203,7 @@ export function Layout() {
     onNewIssue: () => openNewIssue(),
     onSearch: openSearch,
     onToggleSidebar: toggleSidebar,
+    onToggleCollapse: toggleCollapse,
     onTogglePanel: togglePanel,
     onShowShortcuts: () => setShortcutsOpen(true),
   });
