@@ -240,6 +240,26 @@ describe("WorkspaceFileBrowser", () => {
     expect(container.querySelector("input")?.hasAttribute("autofocus")).toBe(false);
   });
 
+  it("hides source controls, folder headings, workspace labels, and timestamps in compact preview mode", () => {
+    useQueryMock.mockReturnValue(ok(availableResponse([
+      createItem({
+        relativePath: "videos/90-days-paperclip/tweet.md",
+        displayPath: "videos/90-days-paperclip/tweet.md",
+      }),
+    ])));
+
+    renderBrowser(vi.fn(), { compact: true, autoFocusSearch: false });
+
+    expect(container.textContent).not.toContain("Source");
+    expect(container.textContent).not.toContain("Workspace");
+    expect(container.textContent).not.toContain("Recently changed");
+    expect(container.textContent).not.toContain("Files in folder");
+    expect(container.textContent).not.toContain("From Isolated workspace");
+    expect(container.querySelector(".tabular-nums")).toBeNull();
+    expect(container.textContent).toContain("videos");
+    expect(container.textContent).toContain("tweet.md");
+  });
+
   it("does not render a Recent/All toggle", () => {
     useQueryMock.mockReturnValue(ok(availableResponse([createItem()])));
     renderBrowser();

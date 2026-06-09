@@ -43,11 +43,6 @@ function basename(path: string): string {
   return idx < 0 ? path : path.slice(idx + 1);
 }
 
-function dirname(path: string): string {
-  const idx = path.lastIndexOf("/");
-  return idx < 0 ? "" : path.slice(0, idx + 1);
-}
-
 function trimTrailingSlash(path: string): string {
   return path.replace(/\/+$/, "");
 }
@@ -390,6 +385,7 @@ export interface WorkspaceFileBrowserProps {
   initialProjectId?: string | null;
   initialWorkspaceId?: string | null;
   autoFocusSearch?: boolean;
+  compact?: boolean;
   className?: string;
 }
 
@@ -402,6 +398,7 @@ export function WorkspaceFileBrowser({
   initialProjectId,
   initialWorkspaceId,
   autoFocusSearch = true,
+  compact = false,
   className,
 }: WorkspaceFileBrowserProps) {
   const [source, setSource] = useState<BrowserSource>(
@@ -675,7 +672,7 @@ export function WorkspaceFileBrowser({
         listboxId={listboxId}
         highlightedItemKey={highlightedItemKey}
         collapsedFolders={collapsedFolders}
-        showTimestamp={!isSearch}
+        showTimestamp={false}
         onToggleFolder={toggleFolder}
         onOpen={openItem}
         onHoverFile={handleHoverFile}
@@ -709,87 +706,94 @@ export function WorkspaceFileBrowser({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Source</span>
-        <SourceSelector value={source} onChange={setSource} />
-        {source === "current" ? (
-          <>
-            <span className="text-xs text-muted-foreground">Workspace</span>
-            <WorkspaceSelector value={workspace} onChange={setWorkspace} />
-          </>
-        ) : null}
-      </div>
+      {!compact ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Source</span>
+            <SourceSelector value={source} onChange={setSource} />
+            {source === "current" ? (
+              <>
+                <span className="text-xs text-muted-foreground">Workspace</span>
+                <WorkspaceSelector value={workspace} onChange={setWorkspace} />
+              </>
+            ) : null}
+          </div>
 
-      {source === "other" ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">Project</span>
-          <Select
-            value={selectedProjectId ?? undefined}
-            onValueChange={handleProjectChange}
-            disabled={!companyId || projectsQuery.isFetching || projectsWithWorkspaces.length === 0}
-          >
-            <SelectTrigger size="sm" className="h-8 max-w-[260px] text-xs">
-              <SelectValue placeholder={projectsQuery.isFetching ? "Loading projects" : "Choose project"} />
-            </SelectTrigger>
-            <SelectContent>
-              {projectsWithWorkspaces.map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {source === "other" ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Project</span>
+              <Select
+                value={selectedProjectId ?? undefined}
+                onValueChange={handleProjectChange}
+                disabled={!companyId || projectsQuery.isFetching || projectsWithWorkspaces.length === 0}
+              >
+                <SelectTrigger size="sm" className="h-8 max-w-[260px] text-xs">
+                  <SelectValue placeholder={projectsQuery.isFetching ? "Loading projects" : "Choose project"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {projectsWithWorkspaces.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          <span className="text-xs text-muted-foreground">Workspace</span>
-          <Select
-            value={selectedWorkspaceId ?? undefined}
-            onValueChange={setSelectedWorkspaceId}
-            disabled={!selectedProject || selectedProject.workspaces.length === 0}
-          >
-            <SelectTrigger size="sm" className="h-8 max-w-[260px] text-xs">
-              <SelectValue placeholder="Choose workspace" />
-            </SelectTrigger>
-            <SelectContent>
-              {(selectedProject?.workspaces ?? []).map((item) => (
-                <SelectItem key={item.id} value={item.id}>
-                  {item.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : null}
+              <span className="text-xs text-muted-foreground">Workspace</span>
+              <Select
+                value={selectedWorkspaceId ?? undefined}
+                onValueChange={setSelectedWorkspaceId}
+                disabled={!selectedProject || selectedProject.workspaces.length === 0}
+              >
+                <SelectTrigger size="sm" className="h-8 max-w-[260px] text-xs">
+                  <SelectValue placeholder="Choose workspace" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(selectedProject?.workspaces ?? []).map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
-      {source === "other" && selectedProject && selectedWorkspace ? (
-        <div className="truncate text-[11px] text-muted-foreground" title={`${selectedProject.name} / ${selectedWorkspace.name}`}>
-          Browsing {selectedProject.name} / {selectedWorkspace.name}
-        </div>
-      ) : null}
+          {source === "other" && selectedProject && selectedWorkspace ? (
+            <div
+              className="truncate text-[11px] text-muted-foreground"
+              title={`${selectedProject.name} / ${selectedWorkspace.name}`}
+            >
+              Browsing {selectedProject.name} / {selectedWorkspace.name}
+            </div>
+          ) : null}
 
-      {folderPath ? (
-        <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground" title={folderPath}>
-          <FolderOpen aria-hidden="true" className="h-3 w-3 shrink-0" />
-          <span className="shrink-0">Folder</span>
-          <span className="min-w-0 truncate font-mono text-foreground">{folderName(folderPath)}</span>
-        </div>
-      ) : null}
-
-      <div className="flex items-baseline justify-between gap-2 pt-1">
-        <span className="text-xs font-medium text-muted-foreground">
           {folderPath ? (
-            isSearch ? <>Files in folder matching “{q}”</> : "Files in folder"
-          ) : isSearch ? <>Files matching “{q}”</> : "Recently changed"}
-        </span>
-        <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          {listQuery.isFetching ? <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" /> : null}
-          {data?.state === "available" && items.length > 0 ? <span>· {items.length}</span> : null}
-        </span>
-      </div>
+            <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground" title={folderPath}>
+              <FolderOpen aria-hidden="true" className="h-3 w-3 shrink-0" />
+              <span className="shrink-0">Folder</span>
+              <span className="min-w-0 truncate font-mono text-foreground">{folderName(folderPath)}</span>
+            </div>
+          ) : null}
 
-      {workspaceLabel ? (
-        <div className="truncate text-[11px] text-muted-foreground" title={workspaceLabel}>
-          From {workspaceLabel}
-        </div>
+          <div className="flex items-baseline justify-between gap-2 pt-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              {folderPath ? (
+                isSearch ? <>Files in folder matching “{q}”</> : "Files in folder"
+              ) : isSearch ? <>Files matching “{q}”</> : "Recently changed"}
+            </span>
+            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              {listQuery.isFetching ? <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" /> : null}
+              {data?.state === "available" && items.length > 0 ? <span>· {items.length}</span> : null}
+            </span>
+          </div>
+
+          {workspaceLabel ? (
+            <div className="truncate text-[11px] text-muted-foreground" title={workspaceLabel}>
+              From {workspaceLabel}
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       <div aria-live="polite" className="sr-only">

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { WorkspaceFileContent } from "@paperclipai/shared";
-import { describeDenial, FileContentViewer } from "./FileViewerSheet";
+import type { FileViewerUrlState } from "@/context/FileViewerContext";
+import { describeDenial, FileContentViewer, FileViewerMetadataRow } from "./FileViewerSheet";
 
 describe("describeDenial", () => {
   it("returns the curated body for too_large regardless of fallback", () => {
@@ -112,5 +113,22 @@ describe("FileContentViewer", () => {
     expect(markup).toContain("<video");
     expect(markup).toContain("controls");
     expect(markup).toContain("data:video/mp4;base64,AAAA");
+  });
+});
+
+describe("FileViewerMetadataRow", () => {
+  const state: FileViewerUrlState = {
+    path: "videos/90-days-paperclip/tweet.md",
+    workspace: "auto",
+    line: null,
+    column: null,
+    projectId: null,
+    workspaceId: null,
+  };
+
+  it("reserves metadata row height while file details load", () => {
+    const markup = renderToStaticMarkup(<FileViewerMetadataRow state={state} />);
+    expect(markup).toContain("min-h-[18px]");
+    expect(markup).toContain("Loading file details");
   });
 });

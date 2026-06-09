@@ -94,11 +94,6 @@ function basename(path: string): string {
   return idx < 0 ? path : path.slice(idx + 1);
 }
 
-function dirname(path: string): string | null {
-  const idx = path.lastIndexOf("/");
-  return idx < 0 ? null : path.slice(0, idx);
-}
-
 function middleTruncatePath(path: string, maxLen = 80): string {
   if (path.length <= maxLen) return path;
   const head = path.slice(0, Math.floor(maxLen / 2) - 1);
@@ -181,6 +176,41 @@ function FileViewerStateView({
         </div>
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+    </div>
+  );
+}
+
+export function FileViewerMetadataRow({
+  resolvedResource,
+  state,
+}: {
+  resolvedResource?: ResolvedWorkspaceResource;
+  state: FileViewerUrlState | null;
+}) {
+  return (
+    <div className="flex min-h-[18px] flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+      {resolvedResource ? (
+        <>
+          {resolvedResource.previewKind ? <span className="capitalize">{resolvedResource.previewKind}</span> : null}
+          {formatBytes(resolvedResource.byteSize) ? (
+            <>
+              <span aria-hidden="true" className="opacity-50">·</span>
+              <span>{formatBytes(resolvedResource.byteSize)}</span>
+            </>
+          ) : null}
+          {state?.line ? (
+            <>
+              <span aria-hidden="true" className="opacity-50">·</span>
+              <span>
+                Line {state.line}
+                {state.column ? `, Col ${state.column}` : ""}
+              </span>
+            </>
+          ) : null}
+        </>
+      ) : state ? (
+        <span className="h-3 w-28 rounded bg-muted animate-pulse" aria-label="Loading file details" />
+      ) : null}
     </div>
   );
 }
@@ -517,7 +547,7 @@ export function FileViewerSheet({
               <FileCode2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             )}
             <div className="min-w-0 flex-1">
-              <DialogTitle id={FILE_VIEWER_LABELLED_BY_ID} className="whitespace-normal break-all text-sm leading-5">
+              <DialogTitle id={FILE_VIEWER_LABELLED_BY_ID} className="truncate text-sm leading-5">
                 {title}
               </DialogTitle>
               <DialogDescription
@@ -584,55 +614,28 @@ export function FileViewerSheet({
               </Button>
             </div>
           </div>
-          {resolvedResource ? (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-              <span title={resolvedResource.workspaceLabel}>
-                From {resolvedResource.workspaceLabel}
-              </span>
-              {resolvedResource.previewKind ? (
-                <>
-                  <span aria-hidden="true" className="opacity-50">·</span>
-                  <span className="capitalize">{resolvedResource.previewKind}</span>
-                </>
-              ) : null}
-              {formatBytes(resolvedResource.byteSize) ? (
-                <>
-                  <span aria-hidden="true" className="opacity-50">·</span>
-                  <span>{formatBytes(resolvedResource.byteSize)}</span>
-                </>
-              ) : null}
-              {state?.line ? (
-                <>
-                  <span aria-hidden="true" className="opacity-50">·</span>
-                  <span>
-                    Line {state.line}
-                    {state.column ? `, Col ${state.column}` : ""}
-                  </span>
-                </>
-              ) : null}
-            </div>
-          ) : null}
+          <FileViewerMetadataRow resolvedResource={resolvedResource} state={state} />
         </DialogHeader>
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div aria-live="polite" className="sr-only">
             {announcement}
           </div>
           {state ? (
-            <div className="flex min-h-0 flex-1">
-              <aside className="hidden min-h-0 w-80 shrink-0 border-r border-border bg-muted/20 sm:flex">
+            <div className="flex min-h-0 flex-1 gap-3 bg-muted/30 p-3">
+              <aside className="hidden min-h-0 w-72 shrink-0 overflow-hidden rounded-md border border-border bg-background sm:flex">
                 <WorkspaceFileBrowser
-                  key={`${state.projectId ?? ""}:${state.workspaceId ?? ""}:${dirname(state.path) ?? ""}`}
+                  key={`${state.projectId ?? ""}:${state.workspaceId ?? ""}`}
                   issueId={issueId}
                   companyId={companyId}
                   onOpen={handleBrowseOpen}
-                  initialFolderPath={dirname(state.path)}
                   initialProjectId={state.projectId}
                   initialWorkspaceId={state.workspaceId}
                   autoFocusSearch={false}
-                  className="min-h-0 flex-1 p-3"
+                  compact
+                  className="min-h-0 flex-1 p-2"
                 />
               </aside>
-              <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-md border border-border bg-background">
                 <FileViewerBody
                   resolveQuery={resolveQuery}
                   contentQuery={contentQuery}
