@@ -151,4 +151,16 @@ describe("FileViewerSheet copy actions", () => {
     expect(separator).not.toBeNull();
     expect(separator?.getAttribute("aria-valuenow")).toBe("288");
   });
+
+  it("keeps split panes unframed so file selection does not shift the browser", () => {
+    renderSheet();
+    const separator = document.body.querySelector('[role="separator"][aria-label="Resize file tree"]');
+    const browserPane = separator?.previousElementSibling;
+    const previewPane = separator?.nextElementSibling;
+
+    expect(browserPane?.className).not.toContain("border");
+    expect(browserPane?.className).not.toContain("rounded");
+    expect(previewPane?.className).not.toContain("border");
+    expect(previewPane?.className).not.toContain("rounded");
+  });
 });

@@ -393,7 +393,10 @@ export function WorkspaceFileBrowser({
     initialProjectId && initialWorkspaceId ? "other" : "current";
   const workspace: WorkspaceFileSelector = "auto";
   const selectedParentPath = useMemo(() => parentFolderPath(selectedPath), [selectedPath]);
-  const effectiveInitialFolderPath = initialFolderPath ?? (initialQuery?.trim() ? null : selectedParentPath);
+  const effectiveInitialFolderPath = useMemo(() => {
+    if (typeof initialFolderPath !== "undefined") return initialFolderPath;
+    return initialQuery?.trim() ? null : selectedParentPath;
+  }, [initialFolderPath, initialQuery, selectedParentPath]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialProjectId ?? null);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(initialWorkspaceId ?? null);
   const [folderPath, setFolderPath] = useState<string | null>(effectiveInitialFolderPath ?? null);

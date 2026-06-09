@@ -743,7 +743,7 @@ export function FileViewerSheet({
           {state ? (
             <div className="flex min-h-0 flex-1 gap-3 bg-muted/30 p-3">
               <aside
-                className="hidden min-h-0 shrink-0 overflow-hidden rounded-md border border-border bg-background sm:flex"
+                className="hidden min-h-0 shrink-0 overflow-hidden sm:flex"
                 style={{ width: fileTreeWidth }}
               >
                 <WorkspaceFileBrowser
@@ -753,7 +753,7 @@ export function FileViewerSheet({
                   onOpen={handleBrowseOpen}
                   onBrowseStateChange={cameFromBrowse ? handleBrowseStateChange : undefined}
                   initialQuery={cameFromBrowse ? viewer.query : null}
-                  initialFolderPath={cameFromBrowse ? viewer.folderPath : null}
+                  initialFolderPath={cameFromBrowse ? viewer.folderPath : undefined}
                   initialProjectId={state.projectId ?? (cameFromBrowse ? viewer.browseProjectId : null)}
                   initialWorkspaceId={state.workspaceId ?? (cameFromBrowse ? viewer.browseWorkspaceId : null)}
                   autoFocusSearch={false}
@@ -776,7 +776,7 @@ export function FileViewerSheet({
                 onKeyDown={handleResizeKeyDown}
                 className="hidden w-1 shrink-0 cursor-col-resize rounded-full bg-border transition-colors hover:bg-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:block"
               />
-              <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-md border border-border bg-background">
+              <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
                 <FileViewerBody
                   resolveQuery={resolveQuery}
                   contentQuery={contentQuery}

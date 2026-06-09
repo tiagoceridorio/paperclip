@@ -298,6 +298,27 @@ describe("WorkspaceFileBrowser", () => {
     expect(container.textContent).toContain("commands.md");
   });
 
+  it("treats an explicit null initial folder as the workspace root", () => {
+    useQueryMock.mockReturnValue(ok(availableResponse([createItem({
+      title: "README.md",
+      relativePath: "README.md",
+      displayPath: "README.md",
+    })])));
+
+    renderBrowser(vi.fn(), {
+      compact: true,
+      autoFocusSearch: false,
+      initialFolderPath: null,
+      selectedPath: "docs/reference/cli/commands.md",
+    });
+
+    const listCall = useQueryMock.mock.calls.find(([options]) => options.queryKey?.[3] === "list");
+    expect(listCall?.[0].queryKey[4]).toMatchObject({
+      mode: "all",
+      path: null,
+    });
+  });
+
   it("preserves an initial search instead of narrowing to the selected file's parent folder", () => {
     useQueryMock.mockReturnValue(ok(availableResponse([createItem({
       title: "FileViewerSheet.tsx",
