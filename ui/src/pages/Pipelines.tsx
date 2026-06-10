@@ -1786,7 +1786,7 @@ export function ReviewQueueStub() {
       ) : null}
 
       {visibleRows.length === 0 ? (
-        <EmptyState icon={Check} message="All caught up." />
+        <EmptyState icon={Check} message="Nothing needs you right now." />
       ) : (
         <div className="space-y-6">
           {groupedRows.map((group) => (
