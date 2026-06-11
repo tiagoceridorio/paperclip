@@ -415,6 +415,69 @@ function buildPipelineCaseContextPack(input: {
   };
 }
 
+function primitivePipelineVariableValue(value: unknown): string | number | boolean {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
+  if (value == null) return "";
+  return JSON.stringify(value);
+}
+
+function buildPipelineCaseVariables(input: {
+  pipeline: typeof pipelines.$inferSelect;
+  case: typeof pipelineCases.$inferSelect;
+  stage: typeof pipelineStages.$inferSelect;
+}) {
+  const fields = input.case.fields && typeof input.case.fields === "object" && !Array.isArray(input.case.fields)
+    ? input.case.fields
+    : {};
+  const variables: Record<string, string | number | boolean> = {
+    pipeline_id: input.pipeline.id,
+    pipeline_key: input.pipeline.key,
+    pipeline_name: input.pipeline.name,
+    stage_id: input.stage.id,
+    stage_key: input.stage.key,
+    stage_name: input.stage.name,
+    case_id: input.case.id,
+    case_key: input.case.caseKey,
+    case_title: input.case.title,
+    case_version: input.case.version,
+  };
+  for (const [key, value] of Object.entries(fields)) {
+    variables[key] = primitivePipelineVariableValue(value);
+  }
+  return variables;
+}
+
+function buildPipelineStageEntryPreamble(input: {
+  pipeline: typeof pipelines.$inferSelect;
+  case: typeof pipelineCases.$inferSelect;
+  stage: typeof pipelineStages.$inferSelect;
+  triggeringEventId?: string | null;
+}) {
+  const contextPack = buildPipelineCaseContextPack(input);
+  return [
+    "## Pipeline Automation Preamble",
+    "",
+    `You are running as part of pipeline "${input.pipeline.name}" (${input.pipeline.key}), stage "${input.stage.name}" (${input.stage.key}), for case "${input.case.title}" (${input.case.caseKey}).`,
+    "",
+    "Use the pipeline case API with your agent token:",
+    "",
+    `- Read this case: GET /api/cases/${input.case.id}`,
+    `- Read a compact work context: GET /api/cases/${input.case.id}/context-pack`,
+    "- Create child cases: POST /api/pipelines/{pipelineId}/cases with parentCaseId, fields, blockedByCaseIds, and a stable requestKey.",
+    "- Link related work: POST /api/cases/{caseId}/issue-links with the work issue id.",
+    `- Finish by transitioning this case when the stage instructions are complete: POST /api/cases/${input.case.id}/transition with expectedVersion from the latest case read.`,
+    "",
+    "Create all intended child cases before moving the parent forward. Use deterministic requestKey values so retries converge instead of duplicating children.",
+    "",
+    "Pipeline variables available to the routine include {{case_id}}, {{case_key}}, {{case_title}}, {{case_version}}, {{pipeline_id}}, {{pipeline_key}}, {{stage_key}}, and each case field by its field key.",
+    input.triggeringEventId ? `Triggering event: ${input.triggeringEventId}` : null,
+    "",
+    "```json",
+    JSON.stringify(contextPack, null, 2),
+    "```",
+  ].filter((line): line is string => line !== null).join("\n");
+}
+
 function buildPipelineCaseContextMarkdown(input: {
   pipeline: typeof pipelines.$inferSelect;
   case: typeof pipelineCases.$inferSelect;
@@ -596,7 +659,8 @@ async function assertValidParentCase(
     throw conflict("Pipeline case parent cycle detected", { code: "parent_cycle" });
   }
 
-  let current = await getCaseOrThrow(db, input.companyId, input.parentCaseId);
+  const parent = await getCaseOrThrow(db, input.companyId, input.parentCaseId);
+  let current = parent;
   let depth = 1;
   while (current.parentCaseId) {
     if (input.caseId && current.parentCaseId === input.caseId) {
@@ -611,7 +675,7 @@ async function assertValidParentCase(
   if (depth >= 32) {
     throw unprocessable("Pipeline case parent depth exceeds 32", { code: "parent_depth_exceeded" });
   }
-  return input.parentCaseId;
+  return parent;
 }
 
 async function adjustParentCounts(
@@ -1082,6 +1146,7 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
     try {
       const routine = await assertRoutineInCompany(execution.companyId, execution.routineId);
       const contextPack = buildPipelineCaseContextPack(detail);
+      const variables = buildPipelineCaseVariables(detail);
       const run = await routinesSvc.runPipelineStageEntryRoutine(execution.routineId, {
         source: "api",
         assigneeAgentId: routine.assigneeAgentId,
@@ -1092,7 +1157,13 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
           stage: contextPack.stage,
           triggeringEventId: execution.triggeringEventId,
           contextPack,
+          variables,
         },
+        variables,
+        descriptionPreamble: buildPipelineStageEntryPreamble({
+          ...detail,
+          triggeringEventId: execution.triggeringEventId,
+        }),
         descriptionAppendix: buildPipelineCaseContextMarkdown({
           ...detail,
           triggeringEventId: execution.triggeringEventId,
@@ -1710,6 +1781,7 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
       fields?: Record<string, unknown>;
       stageKey?: string | null;
       parentCaseId?: string | null;
+      requestKey?: string | null;
       blockedByCaseIds?: string[];
       blockedByCaseKeys?: string[];
       actor: PipelineActor;
@@ -1722,7 +1794,24 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
       return db.transaction(async (tx) => {
         const pipeline = await getPipelineOrThrow(tx, input.companyId, input.pipelineId);
         if (pipeline.archivedAt) throw unprocessable("Pipeline is archived", { code: "pipeline_archived" });
-        await assertValidParentCase(tx, { companyId: input.companyId, parentCaseId: input.parentCaseId ?? null });
+        const requestKey = input.requestKey?.trim() || null;
+        const parentCase = await assertValidParentCase(tx, { companyId: input.companyId, parentCaseId: input.parentCaseId ?? null });
+        if (requestKey && !input.parentCaseId) {
+          throw unprocessable("requestKey requires parentCaseId", { code: "validation" });
+        }
+        if (requestKey && parentCase) {
+          const existingByRequestKey = await tx
+            .select()
+            .from(pipelineCases)
+            .where(and(
+              eq(pipelineCases.companyId, input.companyId),
+              eq(pipelineCases.parentCaseId, parentCase.id),
+              eq(pipelineCases.requestKey, requestKey),
+            ))
+            .limit(1)
+            .then((rows) => rows[0] ?? null);
+          if (existingByRequestKey) return { case: existingByRequestKey, created: false };
+        }
         const blockedByCaseKeyMap = await resolveBlockerCaseKeys(tx, {
           companyId: input.companyId,
           pipelineId: input.pipelineId,
@@ -1760,17 +1849,31 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
             summary: input.summary ?? null,
             fields: input.fields ?? {},
             parentCaseId: input.parentCaseId ?? null,
+            parentCaseVersion: parentCase?.version ?? null,
+            requestKey,
             terminalKind: terminalKindForStage(stage.kind),
             terminalAt: isTerminalKind(stage.kind) ? nowDate() : null,
             createdByUserId: input.actor.type === "user" ? input.actor.userId : null,
             createdByAgentId: input.actor.type === "agent" ? input.actor.agentId : null,
             originRunId: input.actor.type === "agent" ? input.actor.runId : null,
           })
-          .onConflictDoNothing({ target: [pipelineCases.pipelineId, pipelineCases.caseKey] })
+          .onConflictDoNothing()
           .returning();
 
         if (!inserted) {
-          const existing = await tx
+          const existingByRequestKey = requestKey && parentCase
+            ? await tx
+              .select()
+              .from(pipelineCases)
+              .where(and(
+                eq(pipelineCases.companyId, input.companyId),
+                eq(pipelineCases.parentCaseId, parentCase.id),
+                eq(pipelineCases.requestKey, requestKey),
+              ))
+              .limit(1)
+              .then((rows) => rows[0] ?? null)
+            : null;
+          const existing = existingByRequestKey ?? await tx
             .select()
             .from(pipelineCases)
             .where(and(eq(pipelineCases.pipelineId, input.pipelineId), eq(pipelineCases.caseKey, caseKey)))
@@ -1786,7 +1889,7 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
           type: "ingested",
           actor: input.actor,
           toStageId: stage.id,
-          payload: { caseKey },
+          payload: { caseKey, requestKey, parentCaseVersion: inserted.parentCaseVersion },
         });
         await adjustParentCounts(tx, {
           parentCaseId: inserted.parentCaseId,
@@ -1824,6 +1927,7 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
         fields?: Record<string, unknown>;
         stageKey?: string | null;
         parentCaseId?: string | null;
+        requestKey?: string | null;
         blockedByCaseIds?: string[];
         blockedByCaseKeys?: string[];
       }>;

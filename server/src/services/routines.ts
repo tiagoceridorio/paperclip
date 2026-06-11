@@ -375,7 +375,7 @@ function resolveRoutineVariableValues(
 
 function mergeRoutineRunPayload(
   payload: Record<string, unknown> | null | undefined,
-  variables: Record<string, string | number | boolean>,
+  variables: Record<string, unknown>,
 ) {
   if (Object.keys(variables).length === 0) return payload ?? null;
   if (!payload) return { variables };
@@ -1196,6 +1196,7 @@ export function routineService(
     executionWorkspaceId?: string | null;
     executionWorkspacePreference?: string | null;
     executionWorkspaceSettings?: Record<string, unknown> | null;
+    descriptionPreamble?: string | null;
     descriptionAppendix?: string | null;
     actor?: Actor;
   }) {
@@ -1249,10 +1250,15 @@ export function routineService(
     };
     const title = interpolateRoutineTemplate(input.routine.title, allVariables) ?? input.routine.title;
     const baseDescription = interpolateRoutineTemplate(input.routine.description, allVariables);
-    const description = [baseDescription, input.descriptionAppendix]
+    const description = [input.descriptionPreamble, baseDescription, input.descriptionAppendix]
       .filter((part): part is string => Boolean(part && part.trim()))
       .join("\n\n");
-    let triggerPayload = mergeRoutineRunPayload(input.payload, { ...automaticVariables, ...resolvedVariables });
+    const providedVariables = collectProvidedRoutineVariables(input.source, input.payload, input.variables);
+    let triggerPayload = mergeRoutineRunPayload(input.payload, {
+      ...(automationInputs ? providedVariables : {}),
+      ...automaticVariables,
+      ...resolvedVariables,
+    });
     if (interpolationWarnings.length > 0) {
       triggerPayload = {
         ...(triggerPayload ?? {}),
@@ -2283,7 +2289,11 @@ export function routineService(
       });
     },
 
-    runPipelineStageEntryRoutine: async (id: string, input: RunRoutine & { descriptionAppendix?: string | null }, actor?: Actor) => {
+    runPipelineStageEntryRoutine: async (
+      id: string,
+      input: RunRoutine & { descriptionPreamble?: string | null; descriptionAppendix?: string | null },
+      actor?: Actor,
+    ) => {
       const routine = await getRoutineById(id);
       if (!routine) throw notFound("Routine not found");
       if (routine.status === "archived") throw conflict("Routine is archived");
@@ -2303,6 +2313,7 @@ export function routineService(
         executionWorkspacePreference: input.executionWorkspacePreference ?? null,
         executionWorkspaceSettings:
           (input.executionWorkspaceSettings as Record<string, unknown> | null | undefined) ?? null,
+        descriptionPreamble: input.descriptionPreamble ?? null,
         descriptionAppendix: input.descriptionAppendix ?? null,
         actor,
       });

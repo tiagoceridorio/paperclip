@@ -864,6 +864,108 @@ describeEmbeddedPostgres("pipeline routes", () => {
     expect(res.body.code).toBe("approval_required");
   });
 
+  it("lets routine agents fan out child cases with context and request-key idempotency", async () => {
+    const company = await seedCompany();
+    const [agent] = await db.insert(agents).values({
+      companyId: company.id,
+      name: "Pipeline Agent",
+      role: "engineer",
+      status: "idle",
+    }).returning();
+    const [routine] = await db.insert(routines).values({
+      companyId: company.id,
+      title: "Fan out {{release_notes}}",
+      description: "Create child work for {{case_id}}.",
+      assigneeAgentId: agent!.id,
+      variables: [
+        { name: "case_id", type: "text", required: true },
+        { name: "release_notes", type: "text", required: true },
+      ],
+    }).returning();
+    const http = request(app(boardActor));
+    const pipeline = await http
+      .post(`/api/companies/${company.id}/pipelines`)
+      .send({
+        key: "agent-fanout",
+        name: "Agent fanout",
+        stages: [
+          { key: "intake", name: "Intake", kind: "open", position: 100 },
+          {
+            key: "planning",
+            name: "Planning",
+            kind: "working",
+            position: 200,
+            config: { onEnter: { type: "run_routine", routineId: routine!.id } },
+          },
+          { key: "done", name: "Done", kind: "done", position: 900 },
+          { key: "cancelled", name: "Cancelled", kind: "cancelled", position: 1000 },
+        ],
+      })
+      .expect(201);
+
+    const parent = await http
+      .post(`/api/pipelines/${pipeline.body.id}/cases`)
+      .send({ caseKey: "release", title: "Release", fields: { release_notes: "v1 shipped" } })
+      .expect(201);
+    await http
+      .post(`/api/cases/${parent.body.case.id}/transition`)
+      .send({ toStageKey: "planning", expectedVersion: 1 })
+      .expect(200);
+
+    const [run] = await db.select().from(routineRuns).where(eq(routineRuns.routineId, routine!.id));
+    expect(run!.triggerPayload).toMatchObject({
+      variables: {
+        case_id: parent.body.case.id,
+        release_notes: "v1 shipped",
+      },
+    });
+    const [executionIssue] = await db.select().from(issues).where(eq(issues.originRunId, run!.id));
+    expect(executionIssue!.description).toContain("## Pipeline Automation Preamble");
+    expect(executionIssue!.description).toContain(`GET /api/cases/${parent.body.case.id}`);
+    expect(executionIssue!.description).toContain("Create child work for");
+
+    const agentActor: Express.Request["actor"] = {
+      type: "agent",
+      agentId: agent!.id,
+      companyId: company.id,
+      runId: randomUUID(),
+      source: "agent_key",
+    };
+    const agentHttp = request(app(agentActor));
+    const child = await agentHttp
+      .post(`/api/pipelines/${pipeline.body.id}/cases`)
+      .send({
+        caseKey: "child-a",
+        title: "Child A",
+        parentCaseId: parent.body.case.id,
+        requestKey: "fanout:child-a",
+        fields: { release_notes: "v1 shipped", asset: "hero" },
+      })
+      .expect(201);
+    expect(child.body.case.parentCaseVersion).toBe(2);
+    expect(child.body.case.requestKey).toBe("fanout:child-a");
+
+    const retry = await agentHttp
+      .post(`/api/pipelines/${pipeline.body.id}/cases`)
+      .send({
+        caseKey: "child-a-retry",
+        title: "Duplicate child",
+        parentCaseId: parent.body.case.id,
+        requestKey: "fanout:child-a",
+        fields: { release_notes: "changed" },
+      })
+      .expect(200);
+    expect(retry.body.created).toBe(false);
+    expect(retry.body.case.id).toBe(child.body.case.id);
+    expect(retry.body.case.title).toBe("Child A");
+
+    await agentHttp.get(`/api/cases/${child.body.case.id}`).expect(200);
+    await agentHttp
+      .post(`/api/cases/${child.body.case.id}/transition`)
+      .send({ toStageKey: "done", expectedVersion: 1 })
+      .expect(200);
+  });
+
   it("resequences stages when inserting at an occupied position", async () => {
     const company = await seedCompany();
     const http = request(app(boardActor));

@@ -1,6 +1,6 @@
 import { Router, type Request } from "express";
 import { z } from "zod";
-import { and, asc, desc, eq, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import {
   documents,
@@ -62,6 +62,7 @@ const ingestCaseSchema = z.object({
   fields: jsonObjectSchema.optional(),
   stageKey: z.string().trim().min(1).max(120).optional(),
   parentCaseId: z.string().uuid().nullable().optional(),
+  requestKey: z.string().trim().min(1).max(512).optional(),
   workspaceRef: jsonObjectSchema.nullable().optional(),
   blockedByCaseIds: z.array(z.string().uuid()).max(100).optional(),
   blockedByCaseKeys: z.array(z.string().max(1_024)).max(100).optional(),
@@ -452,9 +453,24 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
       .groupBy(pipelines.id)
       .orderBy(asc(pipelines.createdAt));
     const connections = await loadPipelineConnections(db, companyId);
+    const pipelineIds = rows.map((row) => row.pipeline.id);
+    const stageRows = pipelineIds.length > 0
+      ? await db
+        .select()
+        .from(pipelineStages)
+        .where(inArray(pipelineStages.pipelineId, pipelineIds))
+        .orderBy(asc(pipelineStages.position), asc(pipelineStages.createdAt))
+      : [];
+    const stagesByPipelineId = new Map<string, typeof stageRows>();
+    for (const stage of stageRows) {
+      const stages = stagesByPipelineId.get(stage.pipelineId) ?? [];
+      stages.push(stage);
+      stagesByPipelineId.set(stage.pipelineId, stages);
+    }
     res.json(rows.map((row) => ({
       ...row.pipeline,
       stageCount: row.stageCount,
+      stages: stagesByPipelineId.get(row.pipeline.id) ?? [],
       openCaseCount: row.openCaseCount,
       attentionCount: row.attentionCount,
       inMotionCount: row.inMotionCount,

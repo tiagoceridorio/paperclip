@@ -729,6 +729,13 @@
       "when": 1781145700000,
       "tag": "0103_pipeline_transition_forced_event",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1781220000000,
+      "tag": "0104_pipeline_case_agent_fanout",
+      "breakpoints": true
     }
   ]
 }

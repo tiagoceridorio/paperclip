@@ -35,6 +35,7 @@ export interface PipelineListItem {
   enforceTransitions: boolean;
   archivedAt: Date | string | null;
   stageCount: number;
+  stages?: PipelineStage[];
   openCaseCount: number;
   attentionCount?: number | null;
   inMotionCount?: number | null;
@@ -118,6 +119,8 @@ export interface PipelineCase {
   fields?: Record<string, unknown> | null;
   workspaceRef?: Record<string, unknown> | null;
   parentCaseId?: string | null;
+  parentCaseVersion?: number | null;
+  requestKey?: string | null;
   version?: number;
   pendingSuggestion?: PipelineCasePendingSuggestion | null;
   terminalKind?: string | null;
@@ -445,7 +448,18 @@ export const pipelinesApi = {
       force?: boolean;
     },
   ) => api.post<unknown>(`/cases/${caseId}/transition`, data),
-  ingestCasesBatch: (pipelineId: string, data: { items: Array<{ title: string; fields?: Record<string, unknown> }> }) =>
+  ingestCasesBatch: (pipelineId: string, data: {
+    items: Array<{
+      caseKey?: string | null;
+      title: string;
+      fields?: Record<string, unknown>;
+      stageKey?: string | null;
+      parentCaseId?: string | null;
+      requestKey?: string | null;
+      blockedByCaseIds?: string[];
+      blockedByCaseKeys?: string[];
+    }>;
+  }) =>
     api.post<PipelineBatchIngestResult[]>(`/pipelines/${pipelineId}/cases/batch`, data),
   listAttention: (companyId: string, options?: { limit?: number }) => {
     const params = new URLSearchParams();
