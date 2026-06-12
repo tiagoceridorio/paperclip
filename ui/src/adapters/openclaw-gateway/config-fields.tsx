@@ -336,21 +336,17 @@ export function OpenClawGatewayConfigFields({
         />
       </Field>
 
-      <Field label="Claimed API key path">
-        <DraftInput
-          value={
-            isCreate
-              ? ""
-              : eff("adapterConfig", "claimedApiKeyPath", String(config.claimedApiKeyPath ?? ""))
-          }
-          onCommit={(v) =>
-            isCreate ? undefined : mark("adapterConfig", "claimedApiKeyPath", v || undefined)
-          }
-          immediate
-          className={inputClass}
-          placeholder="~/.openclaw/workspace/paperclip-claimed-api-key.json"
-        />
-      </Field>
+      {!isCreate && (
+        <Field label="Claimed API key path">
+          <DraftInput
+            value={eff("adapterConfig", "claimedApiKeyPath", String(config.claimedApiKeyPath ?? ""))}
+            onCommit={(v) => mark("adapterConfig", "claimedApiKeyPath", v || undefined)}
+            immediate
+            className={inputClass}
+            placeholder="~/.openclaw/workspace/paperclip-claimed-api-key.json"
+          />
+        </Field>
+      )}
 
       <Field label="Wait timeout (ms)">
         <DraftInput
