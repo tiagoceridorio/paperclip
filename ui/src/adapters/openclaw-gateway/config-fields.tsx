@@ -299,29 +299,7 @@ export function OpenClawGatewayConfigFields({
           }}
           immediate
           className={inputClass}
-          placeholder="60"
-        />
-      </Field>
-
-      <Field label="Wait timeout (ms)">
-        <DraftInput
-          value={
-            isCreate
-              ? values!.waitTimeoutMs != null ? String(values!.waitTimeoutMs) : ""
-              : eff("adapterConfig", "waitTimeoutMs", String(config.waitTimeoutMs ?? ""))
-          }
-          onCommit={(v) => {
-            const parsed = Number.parseInt(v.trim(), 10);
-            const val = Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-            if (isCreate) {
-              set!({ waitTimeoutMs: val });
-            } else {
-              mark("adapterConfig", "waitTimeoutMs", val);
-            }
-          }}
-          immediate
-          className={inputClass}
-          placeholder="30000"
+          placeholder="120"
         />
       </Field>
 
