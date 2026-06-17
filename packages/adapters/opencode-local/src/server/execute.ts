@@ -437,6 +437,18 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   // selection is already handled via the --model CLI flag.  Set after the
   // envConfig loop so user overrides cannot disable this guard.
   env.OPENCODE_DISABLE_PROJECT_CONFIG = "true";
+  // Isola o STORAGE do opencode por-agente. O opencode.db é GLOBAL (~/.local/share/opencode) e, com
+  // vários agentes concorrentes no mesmo SQLite, dá "database is locked" → run falha. XDG_DATA_HOME
+  // por-agente = cada opencode tem seu próprio .db (runs do mesmo agente são serializados → sem lock).
+  // (O config já era isolado via XDG_CONFIG_HOME; faltava o data.)
+  if (!asString(env.XDG_DATA_HOME, "").trim()) {
+    const agentDataKey = asString(env.PAPERCLIP_AGENT_ID, "").trim() || "shared";
+    const xdgDataDir = agentHome
+      ? path.join(agentHome, "xdg-data")
+      : path.join(os.homedir(), ".paperclip", "opencode-data", agentDataKey);
+    await fs.mkdir(xdgDataDir, { recursive: true });
+    env.XDG_DATA_HOME = xdgDataDir;
+  }
   if (!hasExplicitApiKey && authToken) {
     env.PAPERCLIP_API_KEY = authToken;
   }
