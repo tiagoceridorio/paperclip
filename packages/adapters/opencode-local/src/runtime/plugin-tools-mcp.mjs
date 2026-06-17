@@ -38,6 +38,11 @@ const AGENT_ID = process.env.PAPERCLIP_AGENT_ID || "";
 const COMPANY_ID = process.env.PAPERCLIP_COMPANY_ID || "";
 const RUN_ID = process.env.PAPERCLIP_RUN_ID || "";
 const PLUGIN_FILTER = (process.env.PAPERCLIP_PLUGIN_TOOLS_MCP_PLUGIN_ID || "").trim();
+// Exclude por plugin-key (parte antes do ':'). Ex.: "paperclipai.plugin-llm-wiki,ceridorio.tools"
+// → o fleet recebe só memory+code-RAG (wiki fica só onde for explicitamente liberado). Reduz ruído/custo.
+const PLUGIN_EXCLUDE = new Set(
+  (process.env.PAPERCLIP_PLUGIN_TOOLS_MCP_EXCLUDE || "").split(",").map((s) => s.trim()).filter(Boolean),
+);
 const PROTOCOL_VERSION = "2024-11-05";
 const SERVER_INFO = { name: "paperclip-plugin-tools", version: "0.1.0" };
 
@@ -104,7 +109,14 @@ async function listTools() {
     const qs = PLUGIN_FILTER ? `?pluginId=${encodeURIComponent(PLUGIN_FILTER)}` : "";
     const descriptors = await httpJSON("GET", `/api/plugins/tools${qs}`);
     if (!Array.isArray(descriptors)) return [];
-    return descriptors.map((d) => ({
+    const kept = PLUGIN_EXCLUDE.size
+      ? descriptors.filter((d) => {
+          const nm = String(d.name || "");
+          const pluginKey = nm.includes(":") ? nm.slice(0, nm.indexOf(":")) : "";
+          return !PLUGIN_EXCLUDE.has(pluginKey);
+        })
+      : descriptors;
+    return kept.map((d) => ({
       name: sanitizeName(d.name),
       description:
         (d.description || d.displayName || d.name || "Paperclip plugin tool") +

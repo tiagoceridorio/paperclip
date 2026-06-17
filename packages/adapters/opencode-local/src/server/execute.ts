@@ -210,10 +210,14 @@ async function injectPluginToolsMcpForOpenCode(input: {
       "PAPERCLIP_RUN_ID",
       "PAPERCLIP_PROJECT_ID",
       "PAPERCLIP_PLUGIN_TOOLS_MCP_PLUGIN_ID",
+      "PAPERCLIP_PLUGIN_TOOLS_MCP_EXCLUDE",
     ];
     const bridgeEnv: Record<string, string> = {};
     for (const key of passthroughKeys) {
-      const value = env[key];
+      // run env (inclui override por-agente via adapterConfig.env) tem prioridade; cai no
+      // process.env p/ globais do run-engine.sh (ex.: o EXCLUDE fleet-wide). Per-run secrets
+      // (API_KEY/RUN_ID) só existem no run env, então o fallback é inócuo p/ eles.
+      const value = env[key] ?? process.env[key];
       if (typeof value === "string" && value.length > 0) bridgeEnv[key] = value;
     }
 
