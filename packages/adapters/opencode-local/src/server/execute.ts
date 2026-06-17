@@ -478,7 +478,15 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     const runtimeSessionId = asString(runtimeSessionParams.sessionId, runtime.sessionId ?? "");
     const runtimeSessionCwd = asString(runtimeSessionParams.cwd, "");
     const runtimeRemoteExecution = parseObject(runtimeSessionParams.remoteExecution);
+    // Force-fresh GLOBAL: a sessão opencode adapter-managed acumula contexto entre runs (bloat →
+    // custo explosivo [Despachante: 38.9M tokens/$7.34], estouro de context-limit [GLM-5 262K] e
+    // token-salad). Com PAPERCLIP_OPENCODE_FORCE_FRESH=1 a sessão NUNCA é resumida — cada run começa
+    // limpa. Memória durável entre runs vem do plugin agentmemory, não do histórico da sessão.
+    const forceFreshSession = ["1", "true", "yes"].includes(
+      String(process.env.PAPERCLIP_OPENCODE_FORCE_FRESH ?? "").trim().toLowerCase(),
+    );
     const canResumeSession =
+      !forceFreshSession &&
       runtimeSessionId.length > 0 &&
       (runtimeSessionCwd.length === 0 || path.resolve(runtimeSessionCwd) === path.resolve(effectiveExecutionCwd)) &&
       adapterExecutionTargetSessionMatches(runtimeRemoteExecution, runtimeExecutionTarget);
