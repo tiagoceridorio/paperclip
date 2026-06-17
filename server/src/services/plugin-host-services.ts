@@ -100,6 +100,12 @@ const TELEMETRY_EVENT_NAME_REGEX = /^[a-z0-9][a-z0-9_-]*$/;
 function isPrivateIP(ip: string): boolean {
   const lower = ip.toLowerCase();
 
+  // LOCAL_TRUSTED escape hatch: permitir SÓ loopback (127.x / ::1) quando
+  // PAPERCLIP_PLUGIN_ALLOW_LOOPBACK=1 — p/ plugins-connector com backend LOCAL
+  // (ex.: agentmemory em 127.0.0.1:3111). Mantém o bloqueio de TODO o resto da
+  // faixa privada (10/172/192.168/link-local) → SSRF segue protegido.
+  const ALLOW_LOOPBACK = process.env.PAPERCLIP_PLUGIN_ALLOW_LOOPBACK === "1";
+
   // Unwrap IPv4-mapped IPv6 addresses (::ffff:x.x.x.x) and re-check as IPv4
   const v4MappedMatch = lower.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
   if (v4MappedMatch && v4MappedMatch[1]) return isPrivateIP(v4MappedMatch[1]);
@@ -111,12 +117,12 @@ function isPrivateIP(ip: string): boolean {
     if (second >= 16 && second <= 31) return true;
   }
   if (ip.startsWith("192.168.")) return true;
-  if (ip.startsWith("127.")) return true;                   // loopback
+  if (ip.startsWith("127.")) return ALLOW_LOOPBACK ? false : true; // loopback (liberável p/ backend local)
   if (ip.startsWith("169.254.")) return true;               // link-local
   if (ip === "0.0.0.0") return true;
 
   // IPv6 patterns
-  if (lower === "::1") return true;                          // loopback
+  if (lower === "::1") return ALLOW_LOOPBACK ? false : true;       // loopback (liberável p/ backend local)
   if (lower.startsWith("fc") || lower.startsWith("fd")) return true; // ULA
   if (lower.startsWith("fe80")) return true;                 // link-local
   if (lower === "::") return true;
