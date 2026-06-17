@@ -155,6 +155,122 @@ function claudeSkillsHome(): string {
   return path.join(os.homedir(), ".claude", "skills");
 }
 
+/**
+ * Absolute path to the generic plugin-tools→MCP bridge (a self-contained .mjs
+ * stdio MCP server). Resolved relative to this module's source location so it
+ * works under the tsx-loaded engine.
+ */
+function pluginToolsMcpBridgePath(): string {
+  return path.resolve(__moduleDir, "../runtime/plugin-tools-mcp.mjs");
+}
+
+function isPluginToolsMcpEnabled(env: Record<string, string>): boolean {
+  return isTruthyEnvFlag(env.PAPERCLIP_PLUGIN_TOOLS_MCP ?? process.env.PAPERCLIP_PLUGIN_TOOLS_MCP);
+}
+
+function isPlainObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * GATED plugin-tools MCP injection.
+ *
+ * When PAPERCLIP_PLUGIN_TOOLS_MCP is truthy, ensure the OpenCode run sees an MCP
+ * server (`paperclip-plugin-tools`) that launches the bridge. The bridge proxies
+ * the agent's registered plugin tools (agentmemory, code-rag, llm-wiki, ...) to
+ * the Paperclip HTTP API, making them callable from the session.
+ *
+ * MERGE semantics: if the agent already points OPENCODE_CONFIG at a profile with
+ * redmine/crm-db MCP servers, those are preserved — we only add our entry, write
+ * a merged temp config, and repoint OPENCODE_CONFIG at it. PAPERCLIP_* env is
+ * passed through to the bridge so it inherits the run JWT + run context.
+ *
+ * When the flag is OFF (default/unset) this is a no-op and the run env is byte-
+ * for-byte unchanged. Returns a cleanup for the temp config (no-op when OFF).
+ *
+ * Defensive: any failure here logs a warning and leaves the run untouched — a
+ * broken injection must never abort the agent run.
+ */
+async function injectPluginToolsMcpForOpenCode(input: {
+  env: Record<string, string>;
+  onLog: AdapterExecutionContext["onLog"];
+}): Promise<() => Promise<void>> {
+  const noop = async () => {};
+  const { env, onLog } = input;
+  if (!isPluginToolsMcpEnabled(env)) return noop;
+
+  try {
+    const bridgePath = pluginToolsMcpBridgePath();
+    // Pass through the PAPERCLIP_* run context + auth to the bridge subprocess.
+    const passthroughKeys = [
+      "PAPERCLIP_API_URL",
+      "PAPERCLIP_API_KEY",
+      "PAPERCLIP_AGENT_ID",
+      "PAPERCLIP_COMPANY_ID",
+      "PAPERCLIP_RUN_ID",
+      "PAPERCLIP_PROJECT_ID",
+      "PAPERCLIP_PLUGIN_TOOLS_MCP_PLUGIN_ID",
+    ];
+    const bridgeEnv: Record<string, string> = {};
+    for (const key of passthroughKeys) {
+      const value = env[key];
+      if (typeof value === "string" && value.length > 0) bridgeEnv[key] = value;
+    }
+
+    const mcpEntry = {
+      type: "local",
+      command: ["node", bridgePath],
+      environment: bridgeEnv,
+      enabled: true,
+    };
+
+    // Start from the agent's existing OPENCODE_CONFIG file (if any) and MERGE.
+    const existingConfigPath = (env.OPENCODE_CONFIG ?? "").trim();
+    let baseConfig: Record<string, unknown> = {};
+    if (existingConfigPath) {
+      try {
+        const raw = await fs.readFile(existingConfigPath, "utf8");
+        const parsed = JSON.parse(raw);
+        if (isPlainObjectRecord(parsed)) baseConfig = parsed;
+      } catch (err) {
+        await onLog(
+          "stderr",
+          `[paperclip] plugin-tools MCP: could not read existing OPENCODE_CONFIG "${existingConfigPath}" (${err instanceof Error ? err.message : String(err)}); starting from empty config.\n`,
+        );
+      }
+    }
+
+    const existingMcp = isPlainObjectRecord(baseConfig.mcp) ? baseConfig.mcp : {};
+    const mergedConfig: Record<string, unknown> = {
+      ...baseConfig,
+      mcp: {
+        ...existingMcp,
+        "paperclip-plugin-tools": mcpEntry,
+      },
+    };
+
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "paperclip-plugin-tools-mcp-"));
+    const mergedPath = path.join(dir, "opencode.json");
+    await fs.writeFile(mergedPath, `${JSON.stringify(mergedConfig, null, 2)}\n`, "utf8");
+    env.OPENCODE_CONFIG = mergedPath;
+
+    await onLog(
+      "stdout",
+      `[paperclip] plugin-tools MCP enabled: injected "paperclip-plugin-tools" via ${bridgePath} (merged into ${existingConfigPath || "new config"}).\n`,
+    );
+
+    return async () => {
+      await fs.rm(dir, { recursive: true, force: true }).catch(() => undefined);
+    };
+  } catch (err) {
+    await onLog(
+      "stderr",
+      `[paperclip] plugin-tools MCP injection failed (continuing without it): ${err instanceof Error ? err.message : String(err)}\n`,
+    );
+    return noop;
+  }
+}
+
 async function ensureOpenCodeSkillsInjected(
   onLog: AdapterExecutionContext["onLog"],
   skillsEntries: Array<{ key: string; runtimeName: string; source: string }>,
@@ -261,6 +377,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     typeof envConfig.PAPERCLIP_API_KEY === "string" && envConfig.PAPERCLIP_API_KEY.trim().length > 0;
   const env: Record<string, string> = { ...buildPaperclipEnv(agent) };
   env.PAPERCLIP_RUN_ID = runId;
+  // Surface the run's project id so subprocesses (e.g. the gated plugin-tools MCP
+  // bridge) can build a complete runContext for POST /api/plugins/tools/execute,
+  // which requires projectId. buildPaperclipEnv only sets agent/company/url.
+  const contextProjectId = asString(context.projectId, "").trim();
+  if (contextProjectId) env.PAPERCLIP_PROJECT_ID = contextProjectId;
   const wakeTaskId =
     (typeof context.taskId === "string" && context.taskId.trim().length > 0 && context.taskId.trim()) ||
     (typeof context.issueId === "string" && context.issueId.trim().length > 0 && context.issueId.trim()) ||
@@ -318,6 +439,13 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const preparedRuntimeConfig = await prepareOpenCodeRuntimeConfig({ env, config });
   const localRuntimeConfigHome =
     preparedRuntimeConfig.notes.length > 0 ? preparedRuntimeConfig.env.XDG_CONFIG_HOME : "";
+  // GATED (PAPERCLIP_PLUGIN_TOOLS_MCP): inject the plugin-tools→MCP bridge into the
+  // OpenCode run config so registered plugin tools become callable. No-op when OFF.
+  // Mutates preparedRuntimeConfig.env (the env actually handed to the run process).
+  const cleanupPluginToolsMcp = await injectPluginToolsMcpForOpenCode({
+    env: preparedRuntimeConfig.env,
+    onLog,
+  });
   try {
     const runtimeEnv = Object.fromEntries(
       Object.entries(ensurePathInEnv({ ...process.env, ...preparedRuntimeConfig.env })).filter(
@@ -724,5 +852,6 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     }
   } finally {
     await preparedRuntimeConfig.cleanup();
+    await cleanupPluginToolsMcp();
   }
 }
