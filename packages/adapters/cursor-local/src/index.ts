@@ -64,7 +64,7 @@ export const modelProfiles: AdapterModelProfileDefinition[] = [
     label: "Cheap",
     description: "Use Cursor's known Codex mini model as the budget lane instead of assuming auto is cheap.",
     adapterConfig: {
-      model: "gpt-5.1-codex-mini",
+      model: "anthropic/gw/cheap",
     },
     source: "adapter_default",
   },

@@ -219,7 +219,13 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     DEFAULT_PAPERCLIP_AGENT_PROMPT_TEMPLATE,
   );
   const command = asString(config.command, "opencode");
-  const model = asString(config.model, "").trim();
+  // SAFETY NET: se config.model vier vazio (path de automation/routine do engine às vezes não
+  // repassa o adapterConfig.model), NÃO deixar o opencode cair no default embutido
+  // `amazon-bedrock/mistral.mistral-large-3-675b-instruct` (modelo default barato).
+  // Cai num modelo Bedrock válido (override por env PAPERCLIP_OPENCODE_FALLBACK_MODEL).
+  const model =
+    asString(config.model, "").trim() ||
+    asString(process.env.PAPERCLIP_OPENCODE_FALLBACK_MODEL, "amazon-bedrock/mistral.devstral-2-123b").trim();
   const variant = asString(config.variant, "").trim();
 
   const workspaceContext = parseObject(context.paperclipWorkspace);

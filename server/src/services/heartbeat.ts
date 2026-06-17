@@ -1710,8 +1710,12 @@ function resolveLedgerBiller(result: AdapterExecutionResult): string {
   return readNonEmptyString(result.biller) ?? readNonEmptyString(result.provider) ?? "unknown";
 }
 
-function normalizeBilledCostCents(costUsd: number | null | undefined, billingType: BillingType): number {
-  if (billingType === "subscription_included") return 0;
+function normalizeBilledCostCents(costUsd: number | null | undefined, _billingType: BillingType): number {
+  // Ceridório fork: registramos o custo NOCIONAL (por token) de TODAS as lanes,
+  // inclusive `subscription_included` (Claude por assinatura = $0 marginal real).
+  // Antes zerávamos subscription, o que exigia o workaround do cost-report.mjs;
+  // agora o custo real aparece nativamente. A distinção de billing fica no campo
+  // billingType (preservado), não no valor. (Tiago: "quero os custos de todas".)
   if (typeof costUsd !== "number" || !Number.isFinite(costUsd)) return 0;
   return Math.max(0, Math.round(costUsd * 100));
 }

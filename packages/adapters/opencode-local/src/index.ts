@@ -44,7 +44,7 @@ export const SANDBOX_INSTALL_COMMAND =
   'fi; ' +
   'fi';
 
-export const DEFAULT_OPENCODE_LOCAL_MODEL = "openai/gpt-5.2-codex";
+export const DEFAULT_OPENCODE_LOCAL_MODEL = "amazon-bedrock/mistral.mistral-large-3-675b-instruct";
 
 export function isValidOpenCodeModelId(value: unknown): value is string {
   if (typeof value !== "string") return false;
@@ -61,7 +61,7 @@ export const models: Array<{ id: string; label: string }> = [
   { id: "openai/gpt-5.1-codex-mini", label: "openai/gpt-5.1-codex-mini" },
 ];
 
-export const DEFAULT_OPENCODE_CHEAP_MODEL = "openai/gpt-5.1-codex-mini";
+export const DEFAULT_OPENCODE_CHEAP_MODEL = "amazon-bedrock/mistral.mistral-large-3-675b-instruct";
 
 // The "cheap" budget profile (used for recovery retries and other low-cost lanes).
 // Defaults to OpenCode's known Codex mini model, but is overridable so a deployment
