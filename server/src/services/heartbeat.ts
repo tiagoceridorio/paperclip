@@ -4333,10 +4333,63 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           .then((rows) => rows[0] ?? null)
       : null;
     const issueProjectId = issueProjectRef?.projectId ?? null;
-    const preferredProjectWorkspaceId =
-      issueProjectRef?.projectWorkspaceId ?? contextProjectWorkspaceId ?? null;
-    const resolvedProjectId = issueProjectId ?? contextProjectId;
     const useProjectWorkspace = opts?.useProjectWorkspace !== false;
+
+    // Ceridório fork — workspace-binding fix (idle-poke wakes land in the repo,
+    // not agent_home). The driver pokes idle agents with a bare
+    // `heartbeat run -a <agentId>` / `agent wake`, which carries NO issueId in
+    // the run context. With no issueId/projectId the resolver used to fall all
+    // the way through to the agent_home branch, so opencode agents ran in
+    // ~/.paperclip/.../workspaces/<agentId> instead of the configured project
+    // cwd (e.g. tou/backend) — causing "file not found" + repo hallucinations.
+    // When context gives us nothing, derive the project/projectWorkspace from
+    // the agent's OPEN assigned issues, but ONLY when they unambiguously point
+    // at a single project workspace. This never guesses between projects and
+    // preserves the agent_home fallback for agents with no (or ambiguous) work.
+    let derivedProjectId: string | null = null;
+    let derivedProjectWorkspaceId: string | null = null;
+    if (
+      useProjectWorkspace &&
+      !issueProjectId &&
+      !readNonEmptyString(context.projectId) &&
+      !contextProjectWorkspaceId
+    ) {
+      const assignedOpenIssues = await db
+        .selectDistinct({
+          projectId: issues.projectId,
+          projectWorkspaceId: issues.projectWorkspaceId,
+        })
+        .from(issues)
+        .where(
+          and(
+            eq(issues.companyId, agent.companyId),
+            eq(issues.assigneeAgentId, agent.id),
+            sql`${issues.projectId} is not null`,
+            inArray(issues.status, ["todo", "in_progress", "in_review", "blocked"]),
+          ),
+        );
+      const distinctProjectIds = new Set(
+        assignedOpenIssues.map((row) => row.projectId).filter((id): id is string => Boolean(id)),
+      );
+      if (distinctProjectIds.size === 1) {
+        derivedProjectId = [...distinctProjectIds][0] ?? null;
+        const distinctWorkspaceIds = new Set(
+          assignedOpenIssues
+            .map((row) => row.projectWorkspaceId)
+            .filter((id): id is string => Boolean(id)),
+        );
+        if (distinctWorkspaceIds.size === 1) {
+          derivedProjectWorkspaceId = [...distinctWorkspaceIds][0] ?? null;
+        }
+      }
+    }
+
+    const preferredProjectWorkspaceId =
+      issueProjectRef?.projectWorkspaceId ??
+      contextProjectWorkspaceId ??
+      derivedProjectWorkspaceId ??
+      null;
+    const resolvedProjectId = issueProjectId ?? contextProjectId ?? derivedProjectId;
     const workspaceProjectId = useProjectWorkspace ? resolvedProjectId : null;
 
     const unorderedProjectWorkspaceRows = workspaceProjectId
