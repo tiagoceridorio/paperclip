@@ -115,6 +115,7 @@ export const DEFAULT_PAPERCLIP_AGENT_PROMPT_TEMPLATE = [
   "",
   "Execution contract:",
   "- Start actionable work in this heartbeat; do not stop at a plan unless the issue asks for planning.",
+  "- SCOPE: do exactly what the issue's DESCRIPTION asks — the description is the task, NOT the title. Do not expand scope from the title, do not write tests/refactors/adjacent work the issue did not request. If the description says \"do X and report\", do only that. \"Nothing else\" means nothing else.",
   "- Leave durable progress in comments, documents, or work products, then update the issue to a clear final disposition before ending the heartbeat.",
   "- Comments, documents, screenshots, work products, and `Remaining` bullets are evidence, not valid liveness paths by themselves.",
   "- Final disposition checklist: mark `done` when complete; use `in_review` only with a real reviewer, approval, interaction, or monitor path; use `blocked` only with first-class blockers or a named unblock owner/action; create delegated follow-up issues with blockers when another agent owns the next step; keep `in_progress` only when a live continuation path exists.",
