@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "lane-failover": "node --experimental-strip-types scripts/lane-failover-monitor.ts",
     "preflight:workspace-links": "node cli/node_modules/tsx/dist/cli.mjs scripts/ensure-workspace-package-links.ts",
     "dev": "pnpm --filter @paperclipai/server exec tsx ../scripts/dev-runner.ts watch",
     "dev:watch": "pnpm --filter @paperclipai/server exec tsx ../scripts/dev-runner.ts watch",
